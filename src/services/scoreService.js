@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/scores';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// Automatically ensures /api/scores is appended correctly, avoiding duplicate slashes or missing endpoints
+const API_URL = BASE_URL.endsWith('/api/scores') 
+  ? BASE_URL 
+  : `${BASE_URL.replace(/\/+$/, '')}/api/scores`;
 
 export const getScores = async () => {
   try {
