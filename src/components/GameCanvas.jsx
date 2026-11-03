@@ -65,7 +65,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
 
   // Active game engine state
   const gameState = useRef({
-    paddle: { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false, laserTimer: 0 },
+    paddle: { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false },
     balls: [{ x: 375, y: 300, radius: 8, dx: 4, dy: -4 }],
     bricks: [],
     powerUps: [],
@@ -121,7 +121,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     setLevel(1);
     setGameOverTriggered(false);
 
-    gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false, laserTimer: 0 };
+    gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
     gameState.current.balls = [{ x: 375, y: 300, radius: 8, dx: 4, dy: -4 }];
     gameState.current.bricks = initBricks(1);
     gameState.current.powerUps = [];
@@ -133,12 +133,15 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     playSound('powerup');
     setLevel((prev) => {
       const newLevel = prev + 1;
+      // Speed multiplier increases with each level
+      const speedMultiplier = 1 + (newLevel - 1) * 0.2;
+      
       gameState.current.balls = [{ 
         x: 375, 
         y: 300, 
         radius: 8, 
-        dx: 4 + newLevel * 0.5, 
-        dy: -(4 + newLevel * 0.5) 
+        dx: 4 * speedMultiplier, 
+        dy: -4 * speedMultiplier 
       }];
       gameState.current.bricks = initBricks(newLevel);
       return newLevel;
@@ -157,7 +160,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       } else if (e.key === 'ArrowLeft' || e.key === 'a') {
         gameState.current.paddle.dx = -gameState.current.paddle.speed;
       } else if (e.key === ' ' || e.code === 'Space') {
-        // Laser trigger
         const paddle = gameState.current.paddle;
         if (paddle.hasLaser) {
           playSound('laser');
@@ -197,7 +199,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     };
   }, []);
 
-  // Main Game Animation Loop
+  // Main Game Animation Loop (Optimized dependencies)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -237,7 +239,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
         ctx.fillStyle = '#f43f5e';
         ctx.fillRect(l.x - 2, l.y, 4, 10);
 
-        // Check Laser Collision with Bricks
         let laserHit = false;
         for (let r = 0; r < bricks.length; r++) {
           for (let c = 0; c < bricks[r].length; c++) {
@@ -302,9 +303,26 @@ export default function GameCanvas({ onGameOver, isPaused }) {
           const updatedLives = prevLives - 1;
           if (updatedLives <= 0) {
             setGameOverTriggered(true);
-            setTimeout(() => onGameOver(score), 0);
+            setTimeout(() => {
+              // Access current score state safely
+              setScore((currentScore) => {
+                onGameOver(currentScore);
+                return currentScore;
+              });
+            }, 0);
           } else {
-            gameState.current.balls.push({ x: 375, y: 300, radius: 8, dx: 4, dy: -4 });
+            // Respawn ball matching current level speed
+            setLevel((currentLevel) => {
+              const speedMultiplier = 1 + (currentLevel - 1) * 0.2;
+              gameState.current.balls.push({ 
+                x: 375, 
+                y: 300, 
+                radius: 8, 
+                dx: 4 * speedMultiplier, 
+                dy: -4 * speedMultiplier 
+              });
+              return currentLevel;
+            });
           }
           return updatedLives;
         });
@@ -416,7 +434,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     }
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPaused, gameOverTriggered, level, score, onGameOver]);
+  }, [isPaused, gameOverTriggered, onGameOver]);
 
   return (
     <div style={{ textAlign: 'center', color: '#fff', fontFamily: 'sans-serif' }}>
