@@ -60,9 +60,9 @@ const appContainerStyle = {
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '8px',
+  padding: '4px',
   boxSizing: 'border-box',
-  overflow: 'hidden' // Completely locks scrolling on all devices
+  overflow: 'hidden'
 };
 
 const headerStyle = {
