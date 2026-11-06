@@ -21,7 +21,7 @@ export default function App() {
 
   return (
     <div style={appContainerStyle}>
-      {/* Professional Header HUD (Subtitle removed) */}
+      {/* Professional Header HUD */}
       <header style={headerStyle}>
         <h1 style={titleStyle}>Brick Breaker Quest</h1>
       </header>
@@ -60,19 +60,19 @@ const appContainerStyle = {
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '4px',
+  padding: '4px 8px',
   boxSizing: 'border-box',
   overflow: 'hidden'
 };
 
 const headerStyle = {
   textAlign: 'center',
-  marginBottom: '8px',
+  margin: 0,
 };
 
 const titleStyle = {
   margin: 0,
-  fontSize: 'clamp(1.2rem, 2.5vw, 2rem)',
+  fontSize: 'clamp(1.2rem, 2.5vm, 2rem)',
   fontWeight: '800',
   letterSpacing: '-0.025em',
   background: 'linear-gradient(to right, #38bdf8, #818cf8, #c084fc)',
@@ -105,16 +105,15 @@ const canvasContainerStyle = {
 };
 
 const modalOverlayWrapperStyle = {
-  position: 'absolute',
+  position: 'fixed', // Fixed positioning ensures it covers the entire viewport reliably
   top: 0,
   left: 0,
-  width: '100%',
-  height: '100%',
+  width: '100vw',
+  height: '100vh',
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  backgroundColor: 'rgba(3, 7, 18, 0.9)',
+  backgroundColor: 'rgba(3, 7, 18, 0.85)',
   backdropFilter: 'blur(8px)',
-  borderRadius: '16px',
-  zIndex: 10
+  zIndex: 100
 };
