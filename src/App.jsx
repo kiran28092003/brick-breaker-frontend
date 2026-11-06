@@ -16,17 +16,15 @@ export default function App() {
   const handleRestart = () => {
     setGameOver(false);
     setFinalScore(0);
-    setGameKey((prevKey) => prevKey + 1); // Remounts canvas for a fresh start
+    setGameKey((prevKey) => prevKey + 1);
   };
 
   return (
     <div style={appContainerStyle}>
-      {/* Professional Header HUD */}
       <header style={headerStyle}>
         <h1 style={titleStyle}>Brick Breaker Quest</h1>
       </header>
       
-      {/* Main Responsive Game Wrapper */}
       <main style={gameWrapperStyle}>
         <div style={canvasContainerStyle}>
           <GameCanvas 
@@ -56,11 +54,12 @@ const appContainerStyle = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'space-evenly',
+  justifyContent: 'center', // Centered nicely to protect top/bottom bounds
+  gap: '12px',
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '4px 8px',
+  padding: '12px 8px',
   boxSizing: 'border-box',
   overflow: 'hidden'
 };
@@ -68,11 +67,12 @@ const appContainerStyle = {
 const headerStyle = {
   textAlign: 'center',
   margin: 0,
+  paddingTop: '4px'
 };
 
 const titleStyle = {
   margin: 0,
-  fontSize: 'clamp(1.2rem, 2.5vm, 2rem)',
+  fontSize: 'clamp(1.2rem, 2.5vw, 1.8rem)',
   fontWeight: '800',
   letterSpacing: '-0.025em',
   background: 'linear-gradient(to right, #38bdf8, #818cf8, #c084fc)',
@@ -105,7 +105,7 @@ const canvasContainerStyle = {
 };
 
 const modalOverlayWrapperStyle = {
-  position: 'fixed', // Fixed positioning ensures it covers the entire viewport reliably
+  position: 'fixed',
   top: 0,
   left: 0,
   width: '100vw',
