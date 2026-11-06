@@ -23,7 +23,7 @@ export default function GameOverModal({ score, onPlayAgain }) {
 
   const handleSubmitScore = async (e) => {
     e.preventDefault();
-    if (!playerName.trim()) return;
+    if (isSaved || !playerName.trim()) return; // Guard clause to block double submissions
 
     try {
       await saveScore(playerName.trim(), score);
@@ -50,8 +50,17 @@ export default function GameOverModal({ score, onPlayAgain }) {
             style={inputStyle}
             maxLength={15}
             required
+            disabled={isSaved}
           />
-          <button type="submit" style={buttonStyle}>
+          <button 
+            type="submit" 
+            disabled={isSaved || !playerName.trim()} 
+            style={{ 
+              ...buttonStyle, 
+              opacity: (isSaved || !playerName.trim()) ? 0.6 : 1, 
+              cursor: (isSaved || !playerName.trim()) ? 'not-allowed' : 'pointer' 
+            }}
+          >
             Save Score
           </button>
         </form>
@@ -74,8 +83,8 @@ export default function GameOverModal({ score, onPlayAgain }) {
       </ol>
 
       <button 
-        onClick={onPlayAgain} 
-        style={{ ...buttonStyle, backgroundColor: '#6366f1', width: '100%', marginTop: '15px' }}
+        onClick={onQueryPlayAgainClick => onPlayAgain()} 
+        style={{ ...buttonStyle, backgroundColor: '#6366f1', width: '100%', marginTop: '15px', cursor: 'pointer' }}
       >
         Play Again
       </button>
@@ -109,8 +118,7 @@ const buttonStyle = {
   border: 'none',
   backgroundColor: '#2563eb',
   color: '#fff',
-  fontWeight: 'bold',
-  cursor: 'pointer'
+  fontWeight: 'bold'
 };
 
 const listStyle = {

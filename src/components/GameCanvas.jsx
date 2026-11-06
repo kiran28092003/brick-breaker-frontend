@@ -154,16 +154,24 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     resetGame();
   }, []);
 
-  // Responsive Canvas Resize Listener
+  // Responsive Canvas Resize Listener (Strict Viewport Fitting without scrolling)
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      // Fit container width dynamically while keeping 5:3 ratio
-      const containerWidth = container.clientWidth - 16;
-      const calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
+      const maxWidth = window.innerWidth - 32;
+      const maxHeight = window.innerHeight - 170; // Reserve buffer space for header and HUD
+
+      let containerWidth = maxWidth;
+      let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
+
+      // If calculated height exceeds available viewport space, scale down by height instead
+      if (calculatedHeight > maxHeight) {
+        calculatedHeight = maxHeight;
+        containerWidth = calculatedHeight * (VIRTUAL_WIDTH / VIRTUAL_HEIGHT);
+      }
 
       canvas.style.width = `${containerWidth}px`;
       canvas.style.height = `${calculatedHeight}px`;
