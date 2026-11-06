@@ -161,8 +161,8 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      const maxWidth = window.innerWidth - 32;
-      const maxHeight = window.innerHeight - 170; // Reserve buffer space for header and HUD
+      const maxWidth = window.innerWidth - 24;
+      const maxHeight = window.innerHeight - 110; // Adjusted buffer for tight fit
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
@@ -573,5 +573,5 @@ const canvasStyle = {
   borderRadius: '12px',
   background: '#090d16',
   boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-  touchAction: 'none' // Prevents mobile scrolling interference when dragging paddle
+  touchAction: 'none'
 };

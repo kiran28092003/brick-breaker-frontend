@@ -21,10 +21,9 @@ export default function App() {
 
   return (
     <div style={appContainerStyle}>
-      {/* Professional Header HUD */}
+      {/* Professional Header HUD (Subtitle removed) */}
       <header style={headerStyle}>
         <h1 style={titleStyle}>Brick Breaker Quest</h1>
-        <p style={subtitleStyle}>Internship Production Build</p>
       </header>
       
       {/* Main Responsive Game Wrapper */}
@@ -51,29 +50,29 @@ export default function App() {
 }
 
 const appContainerStyle = {
-  backgroundColor: '#030712', // Deep immersive slate background
-  minHeight: '100vh',
+  backgroundColor: '#030712',
+  height: '100vh',
   width: '100vw',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'flex-start',
+  justifyContent: 'center',
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '16px',
+  padding: '8px',
   boxSizing: 'border-box',
-  overflowX: 'hidden'
+  overflow: 'hidden' // Completely locks scrolling on all devices
 };
 
 const headerStyle = {
   textAlign: 'center',
-  marginBottom: '16px',
+  marginBottom: '8px',
 };
 
 const titleStyle = {
-  margin: '0 0 4px 0',
-  fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
+  margin: 0,
+  fontSize: 'clamp(1.2rem, 2.5vw, 2rem)',
   fontWeight: '800',
   letterSpacing: '-0.025em',
   background: 'linear-gradient(to right, #38bdf8, #818cf8, #c084fc)',
@@ -81,25 +80,14 @@ const titleStyle = {
   WebkitTextFillColor: 'transparent'
 };
 
-const subtitleStyle = {
-  margin: 0,
-  fontSize: '0.85rem',
-  color: '#94a3b8',
-  textTransform: 'uppercase',
-  letterSpacing: '0.1em',
-  fontWeight: '600'
-};
-
 const gameWrapperStyle = {
   position: 'relative',
   width: '100%',
-  maxWidth: '800px',
+  maxWidth: '750px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'center',
-  flex: 1,
-  paddingBottom: '20px'
+  justifyContent: 'center'
 };
 
 const canvasContainerStyle = {
@@ -113,7 +101,7 @@ const canvasContainerStyle = {
   borderRadius: '16px',
   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
   overflow: 'hidden',
-  padding: '8px'
+  padding: '6px'
 };
 
 const modalOverlayWrapperStyle = {
