@@ -154,7 +154,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     resetGame();
   }, []);
 
-  // Responsive Canvas Resize Listener (Strict Viewport Fitting without scrolling)
+  // Responsive Canvas Resize Listener (Guarantees zero clipping and no scrolling)
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
@@ -162,12 +162,11 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       if (!canvas || !container) return;
 
       const maxWidth = window.innerWidth - 24;
-      const maxHeight = window.innerHeight - 110; // Adjusted buffer for tight fit
+      const maxHeight = window.innerHeight - 150; // Adjusted buffer for title and HUD spacing
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
 
-      // If calculated height exceeds available viewport space, scale down by height instead
       if (calculatedHeight > maxHeight) {
         calculatedHeight = maxHeight;
         containerWidth = calculatedHeight * (VIRTUAL_WIDTH / VIRTUAL_HEIGHT);
@@ -523,7 +522,7 @@ const hudStyle = {
   justifyContent: 'space-between',
   width: '100%',
   maxWidth: '750px',
-  marginBottom: '12px',
+  marginBottom: '10px',
   gap: '8px'
 };
 
@@ -533,7 +532,7 @@ const hudCardStyle = {
   backdropFilter: 'blur(8px)',
   border: '1px solid rgba(51, 65, 85, 0.8)',
   borderRadius: '12px',
-  padding: '8px 12px',
+  padding: '6px 12px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -541,28 +540,28 @@ const hudCardStyle = {
 };
 
 const hudLabelStyle = {
-  fontSize: '0.7rem',
+  fontSize: '0.65rem',
   color: '#94a3b8',
   textTransform: 'uppercase',
   fontWeight: '700',
   letterSpacing: '0.05em',
-  marginBottom: '2px'
+  marginBottom: '1px'
 };
 
 const hudValueStyle = {
-  fontSize: '1.25rem',
+  fontSize: '1.1rem',
   fontWeight: '800',
   color: '#38bdf8'
 };
 
 const hudLevelValueStyle = {
-  fontSize: '1.25rem',
+  fontSize: '1.1rem',
   fontWeight: '800',
   color: '#fbbf24'
 };
 
 const hudLifeValueStyle = {
-  fontSize: '1.1rem',
+  fontSize: '1rem',
   fontWeight: '800',
   color: '#f43f5e'
 };
