@@ -1,7 +1,9 @@
+// frontend/src/components/GameCanvas.jsx
 import React, { useRef, useEffect, useState } from 'react';
 
-const CANVAS_WIDTH = 750;
-const CANVAS_HEIGHT = 450;
+// Virtual logical game resolution (maintains perfect 5:3 arcade aspect ratio)
+const VIRTUAL_WIDTH = 750;
+const VIRTUAL_HEIGHT = 450;
 
 // Web Audio Synthesizer (No external sound files required)
 const playSound = (type) => {
@@ -57,6 +59,7 @@ const playSound = (type) => {
 
 export default function GameCanvas({ onGameOver, isPaused }) {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -133,7 +136,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     playSound('powerup');
     setLevel((prev) => {
       const newLevel = prev + 1;
-      // Speed multiplier increases with each level
       const speedMultiplier = 1 + (newLevel - 1) * 0.2;
       
       gameState.current.balls = [{ 
@@ -152,7 +154,27 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     resetGame();
   }, []);
 
-  // Controls & Keyboard Listeners
+  // Responsive Canvas Resize Listener
+  useEffect(() => {
+    const handleResize = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
+
+      // Fit container width dynamically while keeping 5:3 ratio
+      const containerWidth = container.clientWidth - 16;
+      const calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
+
+      canvas.style.width = `${containerWidth}px`;
+      canvas.style.height = `${calculatedHeight}px`;
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Controls & Listeners (Supports Keyboard, Mouse, and Mobile Touch)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowRight' || e.key === 'd') {
@@ -164,8 +186,8 @@ export default function GameCanvas({ onGameOver, isPaused }) {
         if (paddle.hasLaser) {
           playSound('laser');
           gameState.current.lasers.push(
-            { x: paddle.x + 10, y: CANVAS_HEIGHT - 35, dy: -8 },
-            { x: paddle.x + paddle.width - 10, y: CANVAS_HEIGHT - 35, dy: -8 }
+            { x: paddle.x + 10, y: VIRTUAL_HEIGHT - 35, dy: -8 },
+            { x: paddle.x + paddle.width - 10, y: VIRTUAL_HEIGHT - 35, dy: -8 }
           );
         }
       }
@@ -177,29 +199,46 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       }
     };
 
-    const handleMouseMove = (e) => {
+    // Unified coordinate mapper for Mouse & Touch scaling
+    const updatePaddlePosition = (clientX) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const relativeX = e.clientX - rect.left;
-      if (relativeX > 0 && relativeX < CANVAS_WIDTH) {
+      const scaleX = VIRTUAL_WIDTH / rect.width;
+      const relativeX = (clientX - rect.left) * scaleX;
+      
+      if (relativeX >= 0 && relativeX <= VIRTUAL_WIDTH) {
         gameState.current.paddle.x = relativeX - gameState.current.paddle.width / 2;
+      }
+    };
+
+    const handleMouseMove = (e) => updatePaddlePosition(e.clientX);
+    const handleTouchMove = (e) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePaddlePosition(e.touches[0].clientX);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    
     const canvasElement = canvasRef.current;
-    if (canvasElement) canvasElement.addEventListener('mousemove', handleMouseMove);
+    if (canvasElement) {
+      canvasElement.addEventListener('mousemove', handleMouseMove);
+      canvasElement.addEventListener('touchmove', handleTouchMove, { passive: true });
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      if (canvasElement) canvasElement.removeEventListener('mousemove', handleMouseMove);
+      if (canvasElement) {
+        canvasElement.removeEventListener('mousemove', handleMouseMove);
+        canvasElement.removeEventListener('touchmove', handleTouchMove);
+      }
     };
   }, []);
 
-  // Main Game Animation Loop (Optimized dependencies)
+  // Main Game Animation Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -211,25 +250,25 @@ export default function GameCanvas({ onGameOver, isPaused }) {
 
       const { paddle, balls, bricks, powerUps, particles, lasers } = gameState.current;
 
-      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
       // --- 1. Draw Paddle ---
       ctx.fillStyle = paddle.hasLaser ? '#f59e0b' : '#6366f1';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.shadowColor = paddle.hasLaser ? '#f59e0b' : '#6366f1';
-      ctx.fillRect(paddle.x, CANVAS_HEIGHT - 30, paddle.width, paddle.height);
+      ctx.fillRect(paddle.x, VIRTUAL_HEIGHT - 30, paddle.width, paddle.height);
       ctx.shadowBlur = 0;
 
       // Laser Cannon Indicators
       if (paddle.hasLaser) {
         ctx.fillStyle = '#ef4444';
-        ctx.fillRect(paddle.x + 5, CANVAS_HEIGHT - 35, 6, 5);
-        ctx.fillRect(paddle.x + paddle.width - 11, CANVAS_HEIGHT - 35, 6, 5);
+        ctx.fillRect(paddle.x + 5, VIRTUAL_HEIGHT - 35, 6, 5);
+        ctx.fillRect(paddle.x + paddle.width - 11, VIRTUAL_HEIGHT - 35, 6, 5);
       }
 
       paddle.x += paddle.dx;
       if (paddle.x < 0) paddle.x = 0;
-      if (paddle.x + paddle.width > CANVAS_WIDTH) paddle.x = CANVAS_WIDTH - paddle.width;
+      if (paddle.x + paddle.width > VIRTUAL_WIDTH) paddle.x = VIRTUAL_WIDTH - paddle.width;
 
       // --- 2. Update & Draw Lasers ---
       for (let i = lasers.length - 1; i >= 0; i--) {
@@ -272,7 +311,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
         ball.y += ball.dy;
 
         // Wall collisions
-        if (ball.x + ball.radius > CANVAS_WIDTH || ball.x - ball.radius < 0) {
+        if (ball.x + ball.radius > VIRTUAL_WIDTH || ball.x - ball.radius < 0) {
           ball.dx *= -1;
           playSound('hit');
         }
@@ -283,7 +322,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
 
         // Paddle collision
         if (
-          ball.y + ball.radius >= CANVAS_HEIGHT - 30 &&
+          ball.y + ball.radius >= VIRTUAL_HEIGHT - 30 &&
           ball.x >= paddle.x &&
           ball.x <= paddle.x + paddle.width
         ) {
@@ -292,7 +331,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
         }
 
         // Ball out of bounds
-        if (ball.y + ball.radius > CANVAS_HEIGHT) {
+        if (ball.y + ball.radius > VIRTUAL_HEIGHT) {
           balls.splice(i, 1);
         }
       }
@@ -304,14 +343,12 @@ export default function GameCanvas({ onGameOver, isPaused }) {
           if (updatedLives <= 0) {
             setGameOverTriggered(true);
             setTimeout(() => {
-              // Access current score state safely
               setScore((currentScore) => {
                 onGameOver(currentScore);
                 return currentScore;
               });
             }, 0);
           } else {
-            // Respawn ball matching current level speed
             setLevel((currentLevel) => {
               const speedMultiplier = 1 + (currentLevel - 1) * 0.2;
               gameState.current.balls.push({ 
@@ -401,9 +438,8 @@ export default function GameCanvas({ onGameOver, isPaused }) {
         ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
         ctx.fill();
 
-        // Paddle catches Powerup
         if (
-          p.y + 10 >= CANVAS_HEIGHT - 30 &&
+          p.y + 10 >= VIRTUAL_HEIGHT - 30 &&
           p.x >= paddle.x &&
           p.x <= paddle.x + paddle.width
         ) {
@@ -414,14 +450,14 @@ export default function GameCanvas({ onGameOver, isPaused }) {
             setLives((l) => l + 1);
           } else if (p.type === 'MULTI_BALL') {
             balls.push(
-              { x: paddle.x + 20, y: CANVAS_HEIGHT - 40, radius: 8, dx: -3, dy: -5 },
-              { x: paddle.x + paddle.width - 20, y: CANVAS_HEIGHT - 40, radius: 8, dx: 3, dy: -5 }
+              { x: paddle.x + 20, y: VIRTUAL_HEIGHT - 40, radius: 8, dx: -3, dy: -5 },
+              { x: paddle.x + paddle.width - 20, y: VIRTUAL_HEIGHT - 40, radius: 8, dx: 3, dy: -5 }
             );
           } else if (p.type === 'LASER') {
             paddle.hasLaser = true;
           }
           powerUps.splice(i, 1);
-        } else if (p.y > CANVAS_HEIGHT) {
+        } else if (p.y > VIRTUAL_HEIGHT) {
           powerUps.splice(i, 1);
         }
       }
@@ -437,19 +473,97 @@ export default function GameCanvas({ onGameOver, isPaused }) {
   }, [isPaused, gameOverTriggered, onGameOver]);
 
   return (
-    <div style={{ textAlign: 'center', color: '#fff', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-around', maxWidth: 750, margin: '10px auto' }}>
-        <h2>Score: {score}</h2>
-        <h2>Level: {level}</h2>
-        <h2>Lives: {lives}</h2>
+    <div ref={containerRef} style={wrapperStyle}>
+      {/* Modern HUD Header */}
+      <div style={hudStyle}>
+        <div style={hudCardStyle}>
+          <span style={hudLabelStyle}>Score</span>
+          <span style={hudValueStyle}>{score}</span>
+        </div>
+        <div style={hudCardStyle}>
+          <span style={hudLabelStyle}>Level</span>
+          <span style={hudLevelValueStyle}>{level}</span>
+        </div>
+        <div style={hudCardStyle}>
+          <span style={hudLabelStyle}>Lives</span>
+          <span style={hudLifeValueStyle}>{"❤️".repeat(lives)}</span>
+        </div>
       </div>
 
+      {/* Responsive Canvas */}
       <canvas
         ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        style={{ border: '3px solid #6366f1', borderRadius: '8px', background: '#0f172a' }}
+        width={VIRTUAL_WIDTH}
+        height={VIRTUAL_HEIGHT}
+        style={canvasStyle}
       />
     </div>
   );
 }
+
+const wrapperStyle = {
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxSizing: 'border-box'
+};
+
+const hudStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  width: '100%',
+  maxWidth: '750px',
+  marginBottom: '12px',
+  gap: '8px'
+};
+
+const hudCardStyle = {
+  flex: 1,
+  background: 'rgba(30, 41, 59, 0.7)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(51, 65, 85, 0.8)',
+  borderRadius: '12px',
+  padding: '8px 12px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+};
+
+const hudLabelStyle = {
+  fontSize: '0.7rem',
+  color: '#94a3b8',
+  textTransform: 'uppercase',
+  fontWeight: '700',
+  letterSpacing: '0.05em',
+  marginBottom: '2px'
+};
+
+const hudValueStyle = {
+  fontSize: '1.25rem',
+  fontWeight: '800',
+  color: '#38bdf8'
+};
+
+const hudLevelValueStyle = {
+  fontSize: '1.25rem',
+  fontWeight: '800',
+  color: '#fbbf24'
+};
+
+const hudLifeValueStyle = {
+  fontSize: '1.1rem',
+  fontWeight: '800',
+  color: '#f43f5e'
+};
+
+const canvasStyle = {
+  display: 'block',
+  border: '2px solid rgba(99, 102, 241, 0.6)',
+  borderRadius: '12px',
+  background: '#090d16',
+  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+  touchAction: 'none' // Prevents mobile scrolling interference when dragging paddle
+};
