@@ -9,10 +9,10 @@ export default function App() {
   const [levelCleared, setLevelCleared] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [finalScore, setFinalScore] = useState(0);
-  const [coins, setCoins] = useState(150); // Currency system
+  const [coins, setCoins] = useState(150);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [gameKey, setGameKey] = useState(0);
-  const [activeBooster, setActiveBooster] = useState(null); // Booster inventory state
+  const [activeBooster, setActiveBooster] = useState(null);
 
   const handleGameOver = (score) => {
     setFinalScore(score);
@@ -21,7 +21,7 @@ export default function App() {
 
   const handleLevelClear = (score) => {
     setFinalScore(score);
-    setCoins((c) => c + 25); // Reward coins on level clear
+    setCoins((c) => c + 25);
     setLevelCleared(true);
   };
 
@@ -49,7 +49,6 @@ export default function App() {
     }
   };
 
-  // Booster purchase/activation logic
   const handleActivateBooster = (type, cost) => {
     if (coins >= cost) {
       setCoins((c) => c - cost);
@@ -108,7 +107,7 @@ export default function App() {
           />
         </div>
 
-        {/* Power-Up Booster Tray (Benchmark Parity) */}
+        {/* Power-Up Booster Tray */}
         <div style={boosterTrayStyle}>
           <button 
             onClick={() => handleActivateBooster('EXTRA_LIFE', 50)} 
@@ -129,17 +128,20 @@ export default function App() {
             ⚡ Laser Cannon <span style={costStyle}>60 🪙</span>
           </button>
         </div>
+      </main>
 
-        {/* Game Over Modal */}
-        {gameOver && (
+      {/* Global Popup Overlays (Guarantees perfect laptop/desktop popup behavior) */}
+      {gameOver && (
+        <div style={modalOverlayWrapperStyle}>
           <GameOverModal 
             score={finalScore} 
             onPlayAgain={handleRestart} 
           />
-        )}
+        </div>
+      )}
 
-        {/* Level Clear Modal */}
-        {levelCleared && (
+      {levelCleared && (
+        <div style={modalOverlayWrapperStyle}>
           <LevelClearModal 
             level={currentLevel}
             score={finalScore}
@@ -147,8 +149,8 @@ export default function App() {
             onNextLevel={handleNextLevel}
             onReplay={handleRestart}
           />
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }
@@ -166,7 +168,8 @@ const appContainerStyle = {
   margin: 0,
   padding: '8px 12px',
   boxSizing: 'border-box',
-  overflow: 'hidden' // Strict zero-overflow viewport containment
+  overflow: 'hidden',
+  position: 'relative'
 };
 
 const navBarStyle = {
@@ -301,4 +304,18 @@ const boosterButtonStyle = {
 const costStyle = {
   fontSize: '0.65rem',
   color: '#fbbf24'
+};
+
+const modalOverlayWrapperStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  width: '100vw',
+  height: '100vh',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(3, 7, 18, 0.85)',
+  backdropFilter: 'blur(8px)',
+  zIndex: 1000
 };
