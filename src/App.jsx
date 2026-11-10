@@ -157,7 +157,7 @@ export default function App() {
 
 const appContainerStyle = {
   backgroundColor: '#030712',
-  height: '100vh',
+  height: '100dvh', // Dynamic viewport height for flawless mobile & desktop fullscreen
   width: '100vw',
   display: 'flex',
   flexDirection: 'column',
@@ -166,10 +166,12 @@ const appContainerStyle = {
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '8px 12px',
+  padding: '6px 12px',
   boxSizing: 'border-box',
-  overflow: 'hidden',
-  position: 'relative'
+  overflow: 'hidden', // Forces zero scrolling
+  position: 'fixed',
+  top: 0,
+  left: 0
 };
 
 const navBarStyle = {
