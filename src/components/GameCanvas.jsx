@@ -333,6 +333,7 @@ export default function GameCanvas({
         }
       }
 
+      // Strict life check & instant Game Over trigger
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
         const nextLives = livesRef.current - 1;
@@ -478,6 +479,7 @@ export default function GameCanvas({
         </div>
         <div style={hudCardStyle}>
           <span style={hudLabelStyle}>Lives</span>
+          {/* Safeguard against negative counts so hearts never disappear blank */}
           <span style={hudLifeValueStyle}>{"❤️".repeat(Math.max(0, lives))}</span>
         </div>
       </div>
