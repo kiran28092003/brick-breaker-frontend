@@ -20,6 +20,14 @@ export default function GameCanvas({
   const [lives, setLives] = useState(3);
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
+  // Keep a ref mirror of lives to prevent closure stale states in the animation loop
+  const livesRef = useRef(3);
+
+  const updateLives = (newLives) => {
+    livesRef.current = newLives;
+    setLives(newLives);
+  };
+
   const playSound = (type) => {
     if (!soundEnabled) return;
     try {
@@ -80,13 +88,13 @@ export default function GameCanvas({
     isReseting: false
   });
 
-  // Handle Power-Up Booster Tray Activations from App.jsx
+  // Handle Power-Up Booster Tray Activations
   useEffect(() => {
     if (!activeBooster) return;
     const paddle = gameState.current.paddle;
 
     if (activeBooster === 'EXTRA_LIFE') {
-      setLives((l) => l + 1);
+      updateLives(livesRef.current + 1);
     } else if (activeBooster === 'WIDE_PADDLE') {
       paddle.width = Math.min(paddle.width + 40, 200);
     } else if (activeBooster === 'LASER') {
@@ -138,6 +146,7 @@ export default function GameCanvas({
 
   useEffect(() => {
     setGameOverTriggered(false);
+    updateLives(3);
     const speedMultiplier = 1 + (level - 1) * 0.2;
 
     gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
@@ -331,32 +340,31 @@ export default function GameCanvas({
         }
       }
 
-      // Single life-loss guard using isReseting flag
+      // Robust synchronized life-loss guard
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
-        setLives((prevLives) => {
-          const updatedLives = prevLives - 1;
-          if (updatedLives <= 0) {
-            setGameOverTriggered(true);
-            setScore((currentScore) => {
-              onGameOver(currentScore);
-              return currentScore;
-            });
-          } else {
-            const speedMultiplier = 1 + (level - 1) * 0.2;
-            gameState.current.balls.push({ 
-              x: 375, 
-              y: 300, 
-              radius: 8, 
-              dx: 4 * speedMultiplier, 
-              dy: -4 * speedMultiplier 
-            });
-            setTimeout(() => {
-              gameState.current.isReseting = false;
-            }, 600);
-          }
-          return updatedLives;
-        });
+        const nextLives = livesRef.current - 1;
+        updateLives(nextLives);
+
+        if (nextLives <= 0) {
+          setGameOverTriggered(true);
+          setScore((currentScore) => {
+            onGameOver(currentScore);
+            return currentScore;
+          });
+        } else {
+          const speedMultiplier = 1 + (level - 1) * 0.2;
+          gameState.current.balls.push({ 
+            x: 375, 
+            y: 300, 
+            radius: 8, 
+            dx: 4 * speedMultiplier, 
+            dy: -4 * speedMultiplier 
+          });
+          setTimeout(() => {
+            gameState.current.isReseting = false;
+          }, 600);
+        }
       }
 
       // --- 4. Draw & Update Bricks ---
@@ -443,7 +451,7 @@ export default function GameCanvas({
           if (p.type === 'WIDE_PADDLE') {
             paddle.width = Math.min(paddle.width + 30, 180);
           } else if (p.type === 'EXTRA_LIFE') {
-            setLives((l) => l + 1);
+            updateLives(livesRef.current + 1);
           } else if (p.type === 'MULTI_BALL') {
             balls.push(
               { x: paddle.x + 20, y: VIRTUAL_HEIGHT - 40, radius: 8, dx: -3, dy: -5 },
