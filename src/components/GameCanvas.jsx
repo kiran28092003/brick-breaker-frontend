@@ -20,7 +20,6 @@ export default function GameCanvas({
   const [lives, setLives] = useState(3);
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
-  // Keep a ref mirror of lives to prevent closure stale states in the animation loop
   const livesRef = useRef(3);
 
   const updateLives = (newLives) => {
@@ -88,7 +87,6 @@ export default function GameCanvas({
     isReseting: false
   });
 
-  // Handle Power-Up Booster Tray Activations
   useEffect(() => {
     if (!activeBooster) return;
     const paddle = gameState.current.paddle;
@@ -158,15 +156,15 @@ export default function GameCanvas({
     gameState.current.isReseting = false;
   }, [level]);
 
-  // True Fullscreen Responsive Scaling matching expanded 880px horizontal view
+  // Responsive scaling with clean arcade boundary containment
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      const maxWidth = window.innerWidth - 32;
-      const maxHeight = window.innerHeight - 130;
+      const maxWidth = window.innerWidth - 40;
+      const maxHeight = window.innerHeight - 150;
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
@@ -340,7 +338,6 @@ export default function GameCanvas({
         }
       }
 
-      // Robust synchronized life-loss guard
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
         const nextLives = livesRef.current - 1;
@@ -493,12 +490,15 @@ export default function GameCanvas({
         </div>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={VIRTUAL_WIDTH}
-        height={VIRTUAL_HEIGHT}
-        style={canvasStyle}
-      />
+      {/* Clean Arcade Border Frame Container */}
+      <div style={canvasContainerStyle}>
+        <canvas
+          ref={canvasRef}
+          width={VIRTUAL_WIDTH}
+          height={VIRTUAL_HEIGHT}
+          style={canvasStyle}
+        />
+      </div>
     </div>
   );
 }
@@ -516,7 +516,7 @@ const hudStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   width: '100%',
-  maxWidth: '980px', // Matches the wider layout
+  maxWidth: '920px',
   marginBottom: '8px',
   gap: '8px'
 };
@@ -561,11 +561,25 @@ const hudLifeValueStyle = {
   color: '#f43f5e'
 };
 
+const canvasContainerStyle = {
+  width: '100%',
+  maxWidth: '920px',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  background: 'rgba(15, 23, 42, 0.7)',
+  backdropFilter: 'blur(12px)',
+  border: '2px solid rgba(99, 102, 241, 0.8)', // Glowing blue border frame!
+  borderRadius: '16px',
+  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+  overflow: 'hidden',
+  padding: '6px',
+  boxSizing: 'border-box'
+};
+
 const canvasStyle = {
   display: 'block',
-  border: '2px solid rgba(99, 102, 241, 0.6)',
-  borderRadius: '12px',
+  borderRadius: '10px',
   background: '#090d16',
-  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
   touchAction: 'none'
 };
