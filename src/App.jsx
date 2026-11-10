@@ -9,7 +9,7 @@ export default function App() {
   const [levelCleared, setLevelCleared] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [finalScore, setFinalScore] = useState(0);
-  const [coins, setCoins] = useState(125); // Currency system like benchmark
+  const [coins, setCoins] = useState(125);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [gameKey, setGameKey] = useState(0);
 
@@ -20,7 +20,7 @@ export default function App() {
 
   const handleLevelClear = (score) => {
     setFinalScore(score);
-    setCoins((c) => c + 25); // Reward 25 coins on level clear
+    setCoins((c) => c + 25);
     setLevelCleared(true);
   };
 
@@ -50,20 +50,18 @@ export default function App() {
 
   return (
     <div style={appContainerStyle}>
-      {/* Advanced Top Navbar (Benchmark Parity) */}
+      {/* Full-width Immersive Navbar */}
       <header style={navBarStyle}>
         <div style={brandSectionStyle}>
           <div style={logoIconStyle}>🧱</div>
-          <span style={brandTitleStyle}>BRICK BREAKER</span>
+          <span style={brandTitleStyle}>BRICK BREAKER QUEST</span>
         </div>
 
         <div style={navUtilityGroupStyle}>
-          {/* Coin / Currency Counter */}
           <div style={badgeStyle}>
             🪙 <span style={{ color: '#fbbf24', marginLeft: '4px' }}>{coins}</span>
           </div>
 
-          {/* Sound Toggle */}
           <button 
             onClick={() => setSoundEnabled(!soundEnabled)} 
             style={iconButtonStyle} 
@@ -72,7 +70,6 @@ export default function App() {
             {soundEnabled ? '🔊' : '🔇'}
           </button>
 
-          {/* Fullscreen Toggle */}
           <button 
             onClick={toggleFullscreen} 
             style={iconButtonStyle} 
@@ -81,12 +78,11 @@ export default function App() {
             ⤢
           </button>
 
-          {/* User Profile Badge */}
           <div style={userAvatarStyle}>G</div>
         </div>
       </header>
       
-      {/* Main Game Wrapper */}
+      {/* Full Screen Game Wrapper */}
       <main style={gameWrapperStyle}>
         <div style={canvasContainerStyle}>
           <GameCanvas 
@@ -99,7 +95,6 @@ export default function App() {
           />
         </div>
 
-        {/* Game Over Modal */}
         {gameOver && (
           <GameOverModal 
             score={finalScore} 
@@ -107,7 +102,6 @@ export default function App() {
           />
         )}
 
-        {/* Rich Level Clear Modal */}
         {levelCleared && (
           <LevelClearModal 
             level={currentLevel}
@@ -133,21 +127,20 @@ const appContainerStyle = {
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '12px 16px',
+  padding: '8px 12px',
   boxSizing: 'border-box',
   overflow: 'hidden'
 };
 
 const navBarStyle = {
   width: '100%',
-  maxWidth: '850px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  background: 'rgba(30, 41, 59, 0.6)',
+  background: 'rgba(30, 41, 59, 0.4)',
   backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(51, 65, 85, 0.8)',
-  borderRadius: '16px',
+  borderBottom: '1px solid rgba(51, 65, 85, 0.6)',
+  borderRadius: '12px',
   padding: '8px 16px',
   boxSizing: 'border-box'
 };
@@ -159,9 +152,9 @@ const brandSectionStyle = {
 };
 
 const logoIconStyle = {
-  fontSize: '1.25rem',
+  fontSize: '1.2rem',
   background: 'rgba(56, 189, 248, 0.2)',
-  padding: '6px',
+  padding: '4px 8px',
   borderRadius: '8px'
 };
 
@@ -221,7 +214,6 @@ const userAvatarStyle = {
 const gameWrapperStyle = {
   position: 'relative',
   width: '100%',
-  maxWidth: '750px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -234,11 +226,6 @@ const canvasContainerStyle = {
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  background: 'rgba(15, 23, 42, 0.6)',
-  backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(51, 65, 85, 0.8)',
-  borderRadius: '16px',
-  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-  overflow: 'hidden',
-  padding: '6px'
+  background: 'transparent', // Fullscreen immersion without card box background
+  overflow: 'hidden'
 };

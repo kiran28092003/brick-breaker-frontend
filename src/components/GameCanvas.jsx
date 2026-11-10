@@ -1,7 +1,6 @@
 // frontend/src/components/GameCanvas.jsx
 import React, { useRef, useEffect, useState } from 'react';
 
-// Virtual logical game resolution (maintains perfect 5:3 arcade aspect ratio)
 const VIRTUAL_WIDTH = 750;
 const VIRTUAL_HEIGHT = 450;
 
@@ -13,7 +12,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
   const [lives, setLives] = useState(3);
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
-  // Web Audio Synthesizer Handler
   const playSound = (type) => {
     if (!soundEnabled) return;
     try {
@@ -61,22 +59,19 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
         osc.start(now);
         osc.stop(now + 0.1);
       }
-    } catch (err) {
-      // Audio Context block handler
-    }
+    } catch (err) {}
   };
 
-  // Active game engine state
   const gameState = useRef({
     paddle: { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false },
     balls: [{ x: 375, y: 300, radius: 8, dx: 4, dy: -4 }],
     bricks: [],
     powerUps: [],
     particles: [],
-    lasers: []
+    lasers: [],
+    isReseting: false
   });
 
-  // Spawn visual brick explosion particles
   const createParticles = (x, y, color) => {
     for (let i = 0; i < 12; i++) {
       gameState.current.particles.push({
@@ -91,7 +86,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
     }
   };
 
-  // Build level brick layout based on current level prop
   const initBricks = (currentLevel) => {
     const rows = Math.min(4 + currentLevel, 8);
     const cols = 8;
@@ -118,7 +112,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
     return bricks;
   };
 
-  // Initialize or reset game state when level changes
   useEffect(() => {
     setGameOverTriggered(false);
     const speedMultiplier = 1 + (level - 1) * 0.2;
@@ -129,17 +122,18 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
     gameState.current.powerUps = [];
     gameState.current.particles = [];
     gameState.current.lasers = [];
+    gameState.current.isReseting = false;
   }, [level]);
 
-  // Responsive Canvas Resize Listener (Guarantees zero clipping and no scrolling)
+  // True Fullscreen Responsive Scaling
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      const maxWidth = window.innerWidth - 24;
-      const maxHeight = window.innerHeight - 150;
+      const maxWidth = window.innerWidth - 16;
+      const maxHeight = window.innerHeight - 100;
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
@@ -158,7 +152,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Controls & Listeners (Supports Keyboard, Mouse, and Mobile Touch)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowRight' || e.key === 'd') {
@@ -221,7 +214,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
     };
   }, []);
 
-  // Main Game Animation Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -315,17 +307,17 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
         }
       }
 
-      if (balls.length === 0) {
+      // Single life-loss guard using isReseting flag
+      if (balls.length === 0 && !gameState.current.isReseting) {
+        gameState.current.isReseting = true;
         setLives((prevLives) => {
           const updatedLives = prevLives - 1;
           if (updatedLives <= 0) {
             setGameOverTriggered(true);
-            setTimeout(() => {
-              setScore((currentScore) => {
-                onGameOver(currentScore);
-                return currentScore;
-              });
-            }, 0);
+            setScore((currentScore) => {
+              onGameOver(currentScore);
+              return currentScore;
+            });
           } else {
             const speedMultiplier = 1 + (level - 1) * 0.2;
             gameState.current.balls.push({ 
@@ -335,6 +327,9 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
               dx: 4 * speedMultiplier, 
               dy: -4 * speedMultiplier 
             });
+            setTimeout(() => {
+              gameState.current.isReseting = false;
+            }, 600);
           }
           return updatedLives;
         });
@@ -451,7 +446,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
 
   return (
     <div ref={containerRef} style={wrapperStyle}>
-      {/* Modern HUD Header */}
       <div style={hudStyle}>
         <div style={hudCardStyle}>
           <span style={hudLabelStyle}>Score</span>
@@ -467,7 +461,6 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
         </div>
       </div>
 
-      {/* Responsive Canvas */}
       <canvas
         ref={canvasRef}
         width={VIRTUAL_WIDTH}
@@ -492,7 +485,7 @@ const hudStyle = {
   justifyContent: 'space-between',
   width: '100%',
   maxWidth: '750px',
-  marginBottom: '10px',
+  marginBottom: '8px',
   gap: '8px'
 };
 
