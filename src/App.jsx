@@ -3,10 +3,12 @@ import React, { useState } from 'react';
 import GameCanvas from './components/GameCanvas';
 import GameOverModal from './components/GameOverModal';
 import LevelClearModal from './components/LevelClearModal';
+import LeaderboardModal from './components/LeaderboardModal';
 
 export default function App() {
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [finalScore, setFinalScore] = useState(0);
   const [coins, setCoins] = useState(150);
@@ -88,7 +90,14 @@ export default function App() {
             ⤢
           </button>
 
-          <div style={userAvatarStyle}>G</div>
+          {/* Clickable Profile Badge to View Leaderboard */}
+          <div 
+            onClick={() => setShowLeaderboard(true)} 
+            style={userAvatarStyle} 
+            title="View Leaderboard"
+          >
+            G
+          </div>
         </div>
       </header>
       
@@ -103,7 +112,7 @@ export default function App() {
             onBoosterConsumed={() => setActiveBooster(null)}
             onGameOver={handleGameOver} 
             onLevelClear={handleLevelClear}
-            isPaused={gameOver || levelCleared} 
+            isPaused={gameOver || levelCleared || showLeaderboard} 
           />
         </div>
 
@@ -130,26 +139,28 @@ export default function App() {
         </div>
       </main>
 
-      {/* Global Popup Overlays (Guarantees perfect laptop/desktop popup behavior) */}
+      {/* Global Modals */}
       {gameOver && (
-        <div style={modalOverlayWrapperStyle}>
-          <GameOverModal 
-            score={finalScore} 
-            onPlayAgain={handleRestart} 
-          />
-        </div>
+        <GameOverModal 
+          score={finalScore} 
+          onPlayAgain={handleRestart} 
+        />
       )}
 
       {levelCleared && (
-        <div style={modalOverlayWrapperStyle}>
-          <LevelClearModal 
-            level={currentLevel}
-            score={finalScore}
-            coinsEarned={25}
-            onNextLevel={handleNextLevel}
-            onReplay={handleRestart}
-          />
-        </div>
+        <LevelClearModal 
+          level={currentLevel}
+          score={finalScore}
+          coinsEarned={25}
+          onNextLevel={handleNextLevel}
+          onReplay={handleRestart}
+        />
+      )}
+
+      {showLeaderboard && (
+        <LeaderboardModal 
+          onClose={() => setShowLeaderboard(false)} 
+        />
       )}
     </div>
   );
@@ -157,7 +168,7 @@ export default function App() {
 
 const appContainerStyle = {
   backgroundColor: '#030712',
-  height: '100dvh', // Dynamic viewport height for flawless mobile & desktop fullscreen
+  height: '100dvh',
   width: '100vw',
   display: 'flex',
   flexDirection: 'column',
@@ -168,7 +179,7 @@ const appContainerStyle = {
   margin: 0,
   padding: '6px 12px',
   boxSizing: 'border-box',
-  overflow: 'hidden', // Forces zero scrolling
+  overflow: 'hidden',
   position: 'fixed',
   top: 0,
   left: 0
@@ -176,7 +187,7 @@ const appContainerStyle = {
 
 const navBarStyle = {
   width: '100%',
-  maxWidth: '980px', // Increased horizontal span
+  maxWidth: '980px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -187,6 +198,7 @@ const navBarStyle = {
   padding: '6px 14px',
   boxSizing: 'border-box'
 };
+
 const brandSectionStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -249,13 +261,15 @@ const userAvatarStyle = {
   justifyContent: 'center',
   alignItems: 'center',
   fontWeight: 'bold',
-  fontSize: '0.85rem'
+  fontSize: '0.85rem',
+  cursor: 'pointer',
+  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)'
 };
 
 const gameWrapperStyle = {
   position: 'relative',
   width: '100%',
-  maxWidth: '980px', // Matches full horizontal expansion
+  maxWidth: '980px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -267,20 +281,14 @@ const canvasContainerStyle = {
   width: '100%',
   display: 'flex',
   justifyContent: 'center',
-  alignItems: 'center',
-  background: 'rgba(15, 23, 42, 0.6)',
-  backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(51, 65, 85, 0.8)',
-  borderRadius: '14px',
-  boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.7)',
-  overflow: 'hidden',
-  padding: '4px'
+  alignItems: 'center'
 };
 
 const boosterTrayStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   width: '100%',
+  maxWidth: '920px',
   gap: '8px'
 };
 
@@ -305,18 +313,4 @@ const boosterButtonStyle = {
 const costStyle = {
   fontSize: '0.65rem',
   color: '#fbbf24'
-};
-
-const modalOverlayWrapperStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: 'rgba(3, 7, 18, 0.85)',
-  backdropFilter: 'blur(8px)',
-  zIndex: 1000
 };
