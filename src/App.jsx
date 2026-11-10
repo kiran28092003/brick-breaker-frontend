@@ -10,6 +10,7 @@ export default function App() {
   const [levelCleared, setLevelCleared] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
+  const [lives, setLives] = useState(3);
   const [finalScore, setFinalScore] = useState(0);
   const [coins, setCoins] = useState(150);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -37,6 +38,7 @@ export default function App() {
     setGameOver(false);
     setLevelCleared(false);
     setCurrentLevel(1);
+    setLives(3);
     setFinalScore(0);
     setGameKey((prevKey) => prevKey + 1);
   };
@@ -90,7 +92,6 @@ export default function App() {
             ⤢
           </button>
 
-          {/* Clickable Profile Badge to View Leaderboard */}
           <div 
             onClick={() => setShowLeaderboard(true)} 
             style={userAvatarStyle} 
@@ -107,9 +108,11 @@ export default function App() {
           <GameCanvas 
             key={gameKey} 
             level={currentLevel}
+            lives={lives}
             soundEnabled={soundEnabled}
             activeBooster={activeBooster}
             onBoosterConsumed={() => setActiveBooster(null)}
+            onUpdateLives={setLives}
             onGameOver={handleGameOver} 
             onLevelClear={handleLevelClear}
             isPaused={gameOver || levelCleared || showLeaderboard} 
