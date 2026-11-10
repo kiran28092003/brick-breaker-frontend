@@ -176,7 +176,7 @@ const appContainerStyle = {
 
 const navBarStyle = {
   width: '100%',
-  maxWidth: '750px',
+  maxWidth: '880px', // Expanded for full horizontal layout
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -256,7 +256,7 @@ const userAvatarStyle = {
 const gameWrapperStyle = {
   position: 'relative',
   width: '100%',
-  maxWidth: '750px',
+  maxWidth: '880px', // Matches container width to prevent any clipping
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',

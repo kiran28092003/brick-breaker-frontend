@@ -158,15 +158,15 @@ export default function GameCanvas({
     gameState.current.isReseting = false;
   }, [level]);
 
-  // True Fullscreen Responsive Scaling
+  // True Fullscreen Responsive Scaling matching expanded 880px horizontal view
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      const maxWidth = window.innerWidth - 16;
-      const maxHeight = window.innerHeight - 150;
+      const maxWidth = window.innerWidth - 32;
+      const maxHeight = window.innerHeight - 130;
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
@@ -516,7 +516,7 @@ const hudStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   width: '100%',
-  maxWidth: '750px',
+  maxWidth: '880px', // Expanded to match full horizontal container layout
   marginBottom: '8px',
   gap: '8px'
 };
