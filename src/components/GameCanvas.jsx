@@ -4,7 +4,15 @@ import React, { useRef, useEffect, useState } from 'react';
 const VIRTUAL_WIDTH = 750;
 const VIRTUAL_HEIGHT = 450;
 
-export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelClear, isPaused }) {
+export default function GameCanvas({ 
+  level, 
+  soundEnabled, 
+  activeBooster, 
+  onBoosterConsumed, 
+  onGameOver, 
+  onLevelClear, 
+  isPaused 
+}) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   
@@ -72,6 +80,22 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
     isReseting: false
   });
 
+  // Handle Power-Up Booster Tray Activations from App.jsx
+  useEffect(() => {
+    if (!activeBooster) return;
+    const paddle = gameState.current.paddle;
+
+    if (activeBooster === 'EXTRA_LIFE') {
+      setLives((l) => l + 1);
+    } else if (activeBooster === 'WIDE_PADDLE') {
+      paddle.width = Math.min(paddle.width + 40, 200);
+    } else if (activeBooster === 'LASER') {
+      paddle.hasLaser = true;
+    }
+    playSound('powerup');
+    onBoosterConsumed();
+  }, [activeBooster, onBoosterConsumed]);
+
   const createParticles = (x, y, color) => {
     for (let i = 0; i < 12; i++) {
       gameState.current.particles.push({
@@ -133,7 +157,7 @@ export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelCle
       if (!canvas || !container) return;
 
       const maxWidth = window.innerWidth - 16;
-      const maxHeight = window.innerHeight - 100;
+      const maxHeight = window.innerHeight - 150;
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
