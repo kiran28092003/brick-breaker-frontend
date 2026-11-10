@@ -516,7 +516,7 @@ const hudStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   width: '100%',
-  maxWidth: '880px', // Expanded to match full horizontal container layout
+  maxWidth: '980px', // Matches the wider layout
   marginBottom: '8px',
   gap: '8px'
 };
