@@ -5,66 +5,66 @@ import React, { useRef, useEffect, useState } from 'react';
 const VIRTUAL_WIDTH = 750;
 const VIRTUAL_HEIGHT = 450;
 
-// Web Audio Synthesizer (No external sound files required)
-const playSound = (type) => {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    const now = ctx.currentTime;
-
-    if (type === 'hit') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, now);
-      osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-      osc.start(now);
-      osc.stop(now + 0.08);
-    } else if (type === 'break') {
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(500, now);
-      osc.frequency.exponentialRampToValueAtTime(800, now + 0.12);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
-      osc.start(now);
-      osc.stop(now + 0.12);
-    } else if (type === 'powerup') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.setValueAtTime(600, now + 0.08);
-      osc.frequency.setValueAtTime(880, now + 0.16);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-      osc.start(now);
-      osc.stop(now + 0.25);
-    } else if (type === 'laser') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
-      osc.start(now);
-      osc.stop(now + 0.1);
-    }
-  } catch (err) {
-    // Audio Context block handler
-  }
-};
-
-export default function GameCanvas({ onGameOver, isPaused }) {
+export default function GameCanvas({ level, soundEnabled, onGameOver, onLevelClear, isPaused }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
-  const [level, setLevel] = useState(1);
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
+
+  // Web Audio Synthesizer Handler
+  const playSound = (type) => {
+    if (!soundEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+
+      if (type === 'hit') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'break') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(500, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (type === 'powerup') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.setValueAtTime(600, now + 0.08);
+        osc.frequency.setValueAtTime(880, now + 0.16);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'laser') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+    } catch (err) {
+      // Audio Context block handler
+    }
+  };
 
   // Active game engine state
   const gameState = useRef({
@@ -91,7 +91,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     }
   };
 
-  // Build level brick layout
+  // Build level brick layout based on current level prop
   const initBricks = (currentLevel) => {
     const rows = Math.min(4 + currentLevel, 8);
     const cols = 8;
@@ -118,41 +118,18 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     return bricks;
   };
 
-  const resetGame = () => {
-    setScore(0);
-    setLives(3);
-    setLevel(1);
+  // Initialize or reset game state when level changes
+  useEffect(() => {
     setGameOverTriggered(false);
+    const speedMultiplier = 1 + (level - 1) * 0.2;
 
     gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
-    gameState.current.balls = [{ x: 375, y: 300, radius: 8, dx: 4, dy: -4 }];
-    gameState.current.bricks = initBricks(1);
+    gameState.current.balls = [{ x: 375, y: 300, radius: 8, dx: 4 * speedMultiplier, dy: -4 * speedMultiplier }];
+    gameState.current.bricks = initBricks(level);
     gameState.current.powerUps = [];
     gameState.current.particles = [];
     gameState.current.lasers = [];
-  };
-
-  const nextLevel = () => {
-    playSound('powerup');
-    setLevel((prev) => {
-      const newLevel = prev + 1;
-      const speedMultiplier = 1 + (newLevel - 1) * 0.2;
-      
-      gameState.current.balls = [{ 
-        x: 375, 
-        y: 300, 
-        radius: 8, 
-        dx: 4 * speedMultiplier, 
-        dy: -4 * speedMultiplier 
-      }];
-      gameState.current.bricks = initBricks(newLevel);
-      return newLevel;
-    });
-  };
-
-  useEffect(() => {
-    resetGame();
-  }, []);
+  }, [level]);
 
   // Responsive Canvas Resize Listener (Guarantees zero clipping and no scrolling)
   useEffect(() => {
@@ -162,7 +139,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       if (!canvas || !container) return;
 
       const maxWidth = window.innerWidth - 24;
-      const maxHeight = window.innerHeight - 150; // Adjusted buffer for title and HUD spacing
+      const maxHeight = window.innerHeight - 150;
 
       let containerWidth = maxWidth;
       let calculatedHeight = containerWidth * (VIRTUAL_HEIGHT / VIRTUAL_WIDTH);
@@ -206,7 +183,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       }
     };
 
-    // Unified coordinate mapper for Mouse & Touch scaling
     const updatePaddlePosition = (clientX) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -266,7 +242,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       ctx.fillRect(paddle.x, VIRTUAL_HEIGHT - 30, paddle.width, paddle.height);
       ctx.shadowBlur = 0;
 
-      // Laser Cannon Indicators
       if (paddle.hasLaser) {
         ctx.fillStyle = '#ef4444';
         ctx.fillRect(paddle.x + 5, VIRTUAL_HEIGHT - 35, 6, 5);
@@ -317,7 +292,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
         ball.x += ball.dx;
         ball.y += ball.dy;
 
-        // Wall collisions
         if (ball.x + ball.radius > VIRTUAL_WIDTH || ball.x - ball.radius < 0) {
           ball.dx *= -1;
           playSound('hit');
@@ -327,7 +301,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
           playSound('hit');
         }
 
-        // Paddle collision
         if (
           ball.y + ball.radius >= VIRTUAL_HEIGHT - 30 &&
           ball.x >= paddle.x &&
@@ -337,13 +310,11 @@ export default function GameCanvas({ onGameOver, isPaused }) {
           playSound('hit');
         }
 
-        // Ball out of bounds
         if (ball.y + ball.radius > VIRTUAL_HEIGHT) {
           balls.splice(i, 1);
         }
       }
 
-      // If no balls remaining, lose a life
       if (balls.length === 0) {
         setLives((prevLives) => {
           const updatedLives = prevLives - 1;
@@ -356,16 +327,13 @@ export default function GameCanvas({ onGameOver, isPaused }) {
               });
             }, 0);
           } else {
-            setLevel((currentLevel) => {
-              const speedMultiplier = 1 + (currentLevel - 1) * 0.2;
-              gameState.current.balls.push({ 
-                x: 375, 
-                y: 300, 
-                radius: 8, 
-                dx: 4 * speedMultiplier, 
-                dy: -4 * speedMultiplier 
-              });
-              return currentLevel;
+            const speedMultiplier = 1 + (level - 1) * 0.2;
+            gameState.current.balls.push({ 
+              x: 375, 
+              y: 300, 
+              radius: 8, 
+              dx: 4 * speedMultiplier, 
+              dy: -4 * speedMultiplier 
             });
           }
           return updatedLives;
@@ -382,7 +350,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
             ctx.fillStyle = b.status === 2 ? '#e11d48' : b.color;
             ctx.fillRect(b.x, b.y, 80, 20);
 
-            // Ball Collision Check
             for (let ball of balls) {
               if (
                 ball.x > b.x &&
@@ -396,7 +363,6 @@ export default function GameCanvas({ onGameOver, isPaused }) {
                 createParticles(b.x, b.y, b.color);
                 playSound(b.status === 0 ? 'break' : 'hit');
 
-                // 25% Power-Up Drop Chance
                 if (b.status === 0 && Math.random() < 0.25) {
                   const types = ['WIDE_PADDLE', 'EXTRA_LIFE', 'MULTI_BALL', 'LASER'];
                   const selectedType = types[Math.floor(Math.random() * types.length)];
@@ -409,7 +375,11 @@ export default function GameCanvas({ onGameOver, isPaused }) {
       }
 
       if (remainingBricks === 0 && bricks.length > 0) {
-        nextLevel();
+        playSound('powerup');
+        setScore((currentScore) => {
+          onLevelClear(currentScore);
+          return currentScore;
+        });
       }
 
       // --- 5. Draw & Update Particles ---
@@ -477,7 +447,7 @@ export default function GameCanvas({ onGameOver, isPaused }) {
     }
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPaused, gameOverTriggered, onGameOver]);
+  }, [isPaused, gameOverTriggered, onGameOver, onLevelClear, level]);
 
   return (
     <div ref={containerRef} style={wrapperStyle}>
