@@ -6,8 +6,11 @@ export default function LeaderboardModal({ onClose }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Replace with your production Vercel / Render backend URL if needed
-    fetch('/api/scores')
+    // Replace with your actual deployed Node/Express backend URL on Render/Railway/etc.
+    // e.g. 'https://your-backend-service.onrender.com/api/scores'
+    const BACKEND_URL = ''; // Leave empty if using a Vercel rewrite proxy, or insert your full backend URL string here
+
+    fetch(`${BACKEND_URL}/api/scores`)
       .then((res) => res.json())
       .then((data) => {
         setScores(Array.isArray(data) ? data : []);
