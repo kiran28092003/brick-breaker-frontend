@@ -6,13 +6,14 @@ import LevelClearModal from './components/LevelClearModal';
 import LeaderboardModal from './components/LeaderboardModal';
 
 export default function App() {
+  const [gameStarted, setGameStarted] = useState(false); // Game starts paused initially
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [finalScore, setFinalScore] = useState(0);
   const [coins, setCoins] = useState(150);
-  const [lives, setLives] = useState(3); // Managed at App level to persist across levels
+  const [lives, setLives] = useState(3);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [gameKey, setGameKey] = useState(0);
   const [activeBooster, setActiveBooster] = useState(null);
@@ -38,8 +39,9 @@ export default function App() {
     setGameOver(false);
     setLevelCleared(false);
     setCurrentLevel(1);
-    setLives(3); // Reset lives to default on full restart
+    setLives(3);
     setFinalScore(0);
+    setGameStarted(true);
     setGameKey((prevKey) => prevKey + 1);
   };
 
@@ -115,7 +117,7 @@ export default function App() {
             onBoosterConsumed={() => setActiveBooster(null)}
             onGameOver={handleGameOver} 
             onLevelClear={handleLevelClear}
-            isPaused={gameOver || levelCleared || showLeaderboard} 
+            isPaused={!gameStarted || gameOver || levelCleared || showLeaderboard} 
           />
         </div>
 
@@ -142,12 +144,32 @@ export default function App() {
         </div>
       </main>
 
+      {/* Start Game Welcome Modal */}
+      {!gameStarted && !showLeaderboard && (
+        <div style={modalOverlayWrapperStyle}>
+          <div style={welcomeModalStyle}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🧱🚀</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.5rem', color: '#38bdf8' }}>Brick Breaker Quest</h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
+              Destroy bricks, collect power-ups, and climb the global leaderboard!
+            </p>
+            <button 
+              onClick={() => setGameStarted(true)} 
+              style={startButtonStyle}
+            >
+              ▶ Start Game
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Global Modals */}
       {gameOver && (
         <div style={modalOverlayWrapperStyle}>
           <GameOverModal 
             score={finalScore} 
-            onPlayAgain={handleRestart} 
+            onPlayAgain={handleRestart}
+            onClose={() => setGameOver(false)} 
           />
         </div>
       )}
@@ -318,7 +340,7 @@ const boosterButtonStyle = {
 };
 
 const costStyle = {
-  fontSize: '0.65rem',
+  fontSize: '0.65ln',
   color: '#fbbf24'
 };
 
@@ -334,4 +356,30 @@ const modalOverlayWrapperStyle = {
   backgroundColor: 'rgba(3, 7, 18, 0.85)',
   backdropFilter: 'blur(8px)',
   zIndex: 1000
+};
+
+const welcomeModalStyle = {
+  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+  padding: '30px',
+  borderRadius: '20px',
+  textAlign: 'center',
+  color: '#fff',
+  width: '90%',
+  maxWidth: '380px',
+  border: '1px solid rgba(99, 102, 241, 0.5)',
+  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+  boxSizing: 'border-box'
+};
+
+const startButtonStyle = {
+  width: '100%',
+  padding: '13px',
+  borderRadius: '10px',
+  border: 'none',
+  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+  color: '#fff',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+  fontSize: '1rem',
+  boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)'
 };
