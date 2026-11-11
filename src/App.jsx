@@ -10,9 +10,9 @@ export default function App() {
   const [levelCleared, setLevelCleared] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
-  const [lives, setLives] = useState(3);
   const [finalScore, setFinalScore] = useState(0);
   const [coins, setCoins] = useState(150);
+  const [lives, setLives] = useState(3); // Managed at App level to persist across levels
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [gameKey, setGameKey] = useState(0);
   const [activeBooster, setActiveBooster] = useState(null);
@@ -20,7 +20,6 @@ export default function App() {
   const handleGameOver = (score) => {
     setFinalScore(score);
     setGameOver(true);
-    setLevelCleared(false);
   };
 
   const handleLevelClear = (score) => {
@@ -39,7 +38,7 @@ export default function App() {
     setGameOver(false);
     setLevelCleared(false);
     setCurrentLevel(1);
-    setLives(3);
+    setLives(3); // Reset lives to default on full restart
     setFinalScore(0);
     setGameKey((prevKey) => prevKey + 1);
   };
@@ -110,10 +109,10 @@ export default function App() {
             key={gameKey} 
             level={currentLevel}
             lives={lives}
+            setLives={setLives}
             soundEnabled={soundEnabled}
             activeBooster={activeBooster}
             onBoosterConsumed={() => setActiveBooster(null)}
-            onUpdateLives={setLives}
             onGameOver={handleGameOver} 
             onLevelClear={handleLevelClear}
             isPaused={gameOver || levelCleared || showLeaderboard} 
@@ -145,20 +144,24 @@ export default function App() {
 
       {/* Global Modals */}
       {gameOver && (
-        <GameOverModal 
-          score={finalScore} 
-          onPlayAgain={handleRestart} 
-        />
+        <div style={modalOverlayWrapperStyle}>
+          <GameOverModal 
+            score={finalScore} 
+            onPlayAgain={handleRestart} 
+          />
+        </div>
       )}
 
       {levelCleared && (
-        <LevelClearModal 
-          level={currentLevel}
-          score={finalScore}
-          coinsEarned={25}
-          onNextLevel={handleNextLevel}
-          onReplay={handleRestart}
-        />
+        <div style={modalOverlayWrapperStyle}>
+          <LevelClearModal 
+            level={currentLevel}
+            score={finalScore}
+            coinsEarned={25}
+            onNextLevel={handleNextLevel}
+            onReplay={handleRestart}
+          />
+        </div>
       )}
 
       {showLeaderboard && (
@@ -317,4 +320,18 @@ const boosterButtonStyle = {
 const costStyle = {
   fontSize: '0.65rem',
   color: '#fbbf24'
+};
+
+const modalOverlayWrapperStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  width: '100vw',
+  height: '100vh',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(3, 7, 18, 0.85)',
+  backdropFilter: 'blur(8px)',
+  zIndex: 1000
 };

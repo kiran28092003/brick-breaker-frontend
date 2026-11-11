@@ -6,11 +6,11 @@ const VIRTUAL_HEIGHT = 450;
 
 export default function GameCanvas({ 
   level, 
-  lives, 
+  lives,
+  setLives,
   soundEnabled, 
   activeBooster, 
   onBoosterConsumed, 
-  onUpdateLives,
   onGameOver, 
   onLevelClear, 
   isPaused 
@@ -19,17 +19,19 @@ export default function GameCanvas({
   const containerRef = useRef(null);
   
   const [score, setScore] = useState(0);
+  const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
+  // Keep a ref mirror of lives to prevent closure stale states in the animation loop
   const livesRef = useRef(lives);
-  const isPausedRef = useRef(isPaused);
 
   useEffect(() => {
     livesRef.current = lives;
   }, [lives]);
 
-  useEffect(() => {
-    isPausedRef.current = isPaused;
-  }, [isPaused]);
+  const updateLives = (newLives) => {
+    livesRef.current = newLives;
+    setLives(newLives);
+  };
 
   const playSound = (type) => {
     if (!soundEnabled) return;
@@ -91,12 +93,13 @@ export default function GameCanvas({
     isReseting: false
   });
 
+  // Handle Power-Up Booster Tray Activations
   useEffect(() => {
     if (!activeBooster) return;
     const paddle = gameState.current.paddle;
 
     if (activeBooster === 'EXTRA_LIFE') {
-      onUpdateLives(livesRef.current + 1);
+      updateLives(livesRef.current + 1);
     } else if (activeBooster === 'WIDE_PADDLE') {
       paddle.width = Math.min(paddle.width + 40, 200);
     } else if (activeBooster === 'LASER') {
@@ -104,7 +107,7 @@ export default function GameCanvas({
     }
     playSound('powerup');
     onBoosterConsumed();
-  }, [activeBooster, onBoosterConsumed, onUpdateLives]);
+  }, [activeBooster, onBoosterConsumed]);
 
   const createParticles = (x, y, color) => {
     for (let i = 0; i < 12; i++) {
@@ -147,6 +150,8 @@ export default function GameCanvas({
   };
 
   useEffect(() => {
+    setGameOverTriggered(false);
+    // DO NOT reset lives here so lives carry over across levels!
     const speedMultiplier = 1 + (level - 1) * 0.2;
 
     gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
@@ -158,6 +163,7 @@ export default function GameCanvas({
     gameState.current.isReseting = false;
   }, [level]);
 
+  // Responsive scaling with clean arcade boundary containment
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
@@ -253,15 +259,13 @@ export default function GameCanvas({
     let animationFrameId;
 
     const loop = () => {
-      if (isPausedRef.current) {
-        animationFrameId = requestAnimationFrame(loop);
-        return;
-      }
+      if (isPaused || gameOverTriggered) return;
 
       const { paddle, balls, bricks, powerUps, particles, lasers } = gameState.current;
 
       ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
+      // --- 1. Draw Paddle ---
       ctx.fillStyle = paddle.hasLaser ? '#f59e0b' : '#6366f1';
       ctx.shadowBlur = 12;
       ctx.shadowColor = paddle.hasLaser ? '#f59e0b' : '#6366f1';
@@ -278,6 +282,7 @@ export default function GameCanvas({
       if (paddle.x < 0) paddle.x = 0;
       if (paddle.x + paddle.width > VIRTUAL_WIDTH) paddle.x = VIRTUAL_WIDTH - paddle.width;
 
+      // --- 2. Update & Draw Lasers ---
       for (let i = lasers.length - 1; i >= 0; i--) {
         const l = lasers[i];
         l.y += l.dy;
@@ -304,6 +309,7 @@ export default function GameCanvas({
         if (laserHit || l.y < 0) lasers.splice(i, 1);
       }
 
+      // --- 3. Update & Draw Balls ---
       for (let i = balls.length - 1; i >= 0; i--) {
         const ball = balls[i];
 
@@ -339,22 +345,19 @@ export default function GameCanvas({
         }
       }
 
-      // Instantaneous Game Over trigger
+      // Robust synchronized life-loss guard
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
-        const currentLives = livesRef.current;
+        const nextLives = livesRef.current - 1;
+        updateLives(nextLives);
 
-        if (currentLives <= 1) {
-          onUpdateLives(0);
+        if (nextLives <= 0) {
+          setGameOverTriggered(true);
           setScore((currentScore) => {
             onGameOver(currentScore);
             return currentScore;
           });
-          return; 
         } else {
-          const nextLives = currentLives - 1;
-          onUpdateLives(nextLives);
-
           const speedMultiplier = 1 + (level - 1) * 0.2;
           gameState.current.balls.push({ 
             x: 375, 
@@ -369,6 +372,7 @@ export default function GameCanvas({
         }
       }
 
+      // --- 4. Draw & Update Bricks ---
       let remainingBricks = 0;
       for (let r = 0; r < bricks.length; r++) {
         for (let c = 0; c < bricks[r].length; c++) {
@@ -410,6 +414,7 @@ export default function GameCanvas({
         });
       }
 
+      // --- 5. Draw & Update Particles ---
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.dx;
@@ -428,6 +433,7 @@ export default function GameCanvas({
         }
       }
 
+      // --- 6. Draw & Catch Power-Ups ---
       for (let i = powerUps.length - 1; i >= 0; i--) {
         const p = powerUps[i];
         p.y += p.dy;
@@ -450,7 +456,7 @@ export default function GameCanvas({
           if (p.type === 'WIDE_PADDLE') {
             paddle.width = Math.min(paddle.width + 30, 180);
           } else if (p.type === 'EXTRA_LIFE') {
-            onUpdateLives(livesRef.current + 1);
+            updateLives(livesRef.current + 1);
           } else if (p.type === 'MULTI_BALL') {
             balls.push(
               { x: paddle.x + 20, y: VIRTUAL_HEIGHT - 40, radius: 8, dx: -3, dy: -5 },
@@ -468,9 +474,12 @@ export default function GameCanvas({
       animationFrameId = requestAnimationFrame(loop);
     };
 
-    animationFrameId = requestAnimationFrame(loop);
+    if (!isPaused && !gameOverTriggered) {
+      animationFrameId = requestAnimationFrame(loop);
+    }
+
     return () => cancelAnimationFrame(animationFrameId);
-  }, [level, onGameOver, onLevelClear, onUpdateLives]);
+  }, [isPaused, gameOverTriggered, onGameOver, onLevelClear, level]);
 
   return (
     <div ref={containerRef} style={wrapperStyle}>
@@ -485,10 +494,11 @@ export default function GameCanvas({
         </div>
         <div style={hudCardStyle}>
           <span style={hudLabelStyle}>Lives</span>
-          <span style={hudLifeValueStyle}>{"❤️".repeat(Math.max(0, lives))}</span>
+          <span style={hudLifeValueStyle}>{"❤️".repeat(lives)}</span>
         </div>
       </div>
 
+      {/* Clean Arcade Border Frame Container */}
       <div style={canvasContainerStyle}>
         <canvas
           ref={canvasRef}
