@@ -246,7 +246,6 @@ export default function GameCanvas({
     };
   }, []);
 
-  // Stable Game Loop that evaluates paused state via refs to prevent closure bugs
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -340,7 +339,7 @@ export default function GameCanvas({
         }
       }
 
-      // Foolproof immediate Game Over trigger
+      // Instantaneous Game Over trigger
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
         const currentLives = livesRef.current;
@@ -351,7 +350,7 @@ export default function GameCanvas({
             onGameOver(currentScore);
             return currentScore;
           });
-          return; // Stop loop execution
+          return; 
         } else {
           const nextLives = currentLives - 1;
           onUpdateLives(nextLives);

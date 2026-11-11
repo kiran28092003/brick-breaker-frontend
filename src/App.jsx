@@ -20,6 +20,7 @@ export default function App() {
   const handleGameOver = (score) => {
     setFinalScore(score);
     setGameOver(true);
+    setLevelCleared(false);
   };
 
   const handleLevelClear = (score) => {
