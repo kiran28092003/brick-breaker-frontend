@@ -333,19 +333,22 @@ export default function GameCanvas({
         }
       }
 
-      // Strict life check & instant Game Over trigger
+      // Robust synchronous game over check based on current ref value
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
-        const nextLives = livesRef.current - 1;
-        onUpdateLives(nextLives);
+        const currentLives = livesRef.current;
 
-        if (nextLives <= 0) {
+        if (currentLives <= 1) {
+          onUpdateLives(0);
           setGameOverTriggered(true);
           setScore((currentScore) => {
             onGameOver(currentScore);
             return currentScore;
           });
         } else {
+          const nextLives = currentLives - 1;
+          onUpdateLives(nextLives);
+
           const speedMultiplier = 1 + (level - 1) * 0.2;
           gameState.current.balls.push({ 
             x: 375, 
@@ -479,7 +482,6 @@ export default function GameCanvas({
         </div>
         <div style={hudCardStyle}>
           <span style={hudLabelStyle}>Lives</span>
-          {/* Safeguard against negative counts so hearts never disappear blank */}
           <span style={hudLifeValueStyle}>{"❤️".repeat(Math.max(0, lives))}</span>
         </div>
       </div>
