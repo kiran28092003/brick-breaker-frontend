@@ -21,7 +21,6 @@ export default function GameCanvas({
   const [score, setScore] = useState(0);
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
-  // Keep a ref mirror of lives to prevent closure stale states in the animation loop
   const livesRef = useRef(lives);
 
   useEffect(() => {
@@ -93,7 +92,6 @@ export default function GameCanvas({
     isReseting: false
   });
 
-  // Handle Power-Up Booster Tray Activations
   useEffect(() => {
     if (!activeBooster) return;
     const paddle = gameState.current.paddle;
@@ -151,7 +149,6 @@ export default function GameCanvas({
 
   useEffect(() => {
     setGameOverTriggered(false);
-    // DO NOT reset lives here so lives carry over across levels!
     const speedMultiplier = 1 + (level - 1) * 0.2;
 
     gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
@@ -163,7 +160,6 @@ export default function GameCanvas({
     gameState.current.isReseting = false;
   }, [level]);
 
-  // Responsive scaling with clean arcade boundary containment
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
@@ -345,7 +341,6 @@ export default function GameCanvas({
         }
       }
 
-      // Robust synchronized life-loss guard
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
         const nextLives = livesRef.current - 1;
@@ -498,7 +493,6 @@ export default function GameCanvas({
         </div>
       </div>
 
-      {/* Clean Arcade Border Frame Container */}
       <div style={canvasContainerStyle}>
         <canvas
           ref={canvasRef}

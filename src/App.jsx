@@ -7,6 +7,7 @@ import LeaderboardModal from './components/LeaderboardModal';
 
 export default function App() {
   const [gameStarted, setGameStarted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -42,6 +43,7 @@ export default function App() {
     setLives(3);
     setFinalScore(0);
     setGameStarted(true);
+    setIsPaused(false);
     setGameKey((prevKey) => prevKey + 1);
   };
 
@@ -77,6 +79,17 @@ export default function App() {
           <div style={badgeStyle}>
             🪙 <span style={{ color: '#fbbf24', marginLeft: '4px' }}>{coins}</span>
           </div>
+
+          {/* Pause / Resume Button visible once game starts */}
+          {gameStarted && (
+            <button 
+              onClick={() => setIsPaused(!isPaused)} 
+              style={pauseButtonStyle}
+              title={isPaused ? "Resume Game" : "Pause Game"}
+            >
+              {isPaused ? '▶ Resume' : '⏸ Pause'}
+            </button>
+          )}
 
           <button 
             onClick={() => setSoundEnabled(!soundEnabled)} 
@@ -117,7 +130,7 @@ export default function App() {
             onBoosterConsumed={() => setActiveBooster(null)}
             onGameOver={handleGameOver} 
             onLevelClear={handleLevelClear}
-            isPaused={!gameStarted || gameOver || levelCleared || showLeaderboard} 
+            isPaused={!gameStarted || isPaused || gameOver || levelCleared || showLeaderboard} 
           />
         </div>
 
@@ -144,8 +157,8 @@ export default function App() {
         </div>
       </main>
 
-      {/* Start Game Welcome Modal */}
-      {!gameStarted && !showLeaderboard && (
+      {/* Initial Welcome Pop-up Modal */}
+      {!gameStarted && (
         <div style={modalOverlayWrapperStyle}>
           <div style={welcomeModalStyle}>
             <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🧱🚀</div>
@@ -154,7 +167,10 @@ export default function App() {
               Destroy bricks, collect power-ups, and climb the global leaderboard!
             </p>
             <button 
-              onClick={() => setGameStarted(true)} 
+              onClick={() => {
+                setGameStarted(true);
+                setIsPaused(false);
+              }} 
               style={startButtonStyle}
             >
               ▶ Start Game
@@ -265,6 +281,17 @@ const badgeStyle = {
   fontWeight: '700',
   display: 'flex',
   alignItems: 'center'
+};
+
+const pauseButtonStyle = {
+  background: 'rgba(99, 102, 241, 0.2)',
+  border: '1px solid rgba(99, 102, 241, 0.6)',
+  borderRadius: '8px',
+  padding: '5px 12px',
+  color: '#38bdf8',
+  fontSize: '0.8rem',
+  fontWeight: '700',
+  cursor: 'pointer'
 };
 
 const iconButtonStyle = {
