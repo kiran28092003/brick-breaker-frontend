@@ -19,13 +19,17 @@ export default function GameCanvas({
   const containerRef = useRef(null);
   
   const [score, setScore] = useState(0);
-  const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
   const livesRef = useRef(lives);
+  const isPausedRef = useRef(isPaused);
 
   useEffect(() => {
     livesRef.current = lives;
   }, [lives]);
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
 
   const playSound = (type) => {
     if (!soundEnabled) return;
@@ -143,7 +147,6 @@ export default function GameCanvas({
   };
 
   useEffect(() => {
-    setGameOverTriggered(false);
     const speedMultiplier = 1 + (level - 1) * 0.2;
 
     gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
@@ -243,6 +246,7 @@ export default function GameCanvas({
     };
   }, []);
 
+  // Stable Game Loop that evaluates paused state via refs to prevent closure bugs
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -250,7 +254,10 @@ export default function GameCanvas({
     let animationFrameId;
 
     const loop = () => {
-      if (isPaused || gameOverTriggered) return;
+      if (isPausedRef.current) {
+        animationFrameId = requestAnimationFrame(loop);
+        return;
+      }
 
       const { paddle, balls, bricks, powerUps, particles, lasers } = gameState.current;
 
@@ -333,18 +340,18 @@ export default function GameCanvas({
         }
       }
 
-      // Robust synchronous game over check based on current ref value
+      // Foolproof immediate Game Over trigger
       if (balls.length === 0 && !gameState.current.isReseting) {
         gameState.current.isReseting = true;
         const currentLives = livesRef.current;
 
         if (currentLives <= 1) {
           onUpdateLives(0);
-          setGameOverTriggered(true);
           setScore((currentScore) => {
             onGameOver(currentScore);
             return currentScore;
           });
+          return; // Stop loop execution
         } else {
           const nextLives = currentLives - 1;
           onUpdateLives(nextLives);
@@ -462,12 +469,9 @@ export default function GameCanvas({
       animationFrameId = requestAnimationFrame(loop);
     };
 
-    if (!isPaused && !gameOverTriggered) {
-      animationFrameId = requestAnimationFrame(loop);
-    }
-
+    animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPaused, gameOverTriggered, onGameOver, onLevelClear, level, onUpdateLives]);
+  }, [level, onGameOver, onLevelClear, onUpdateLives]);
 
   return (
     <div ref={containerRef} style={wrapperStyle}>
