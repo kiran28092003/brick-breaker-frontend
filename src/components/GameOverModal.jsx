@@ -1,60 +1,85 @@
 // frontend/src/components/GameOverModal.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function GameOverModal({ score, onPlayAgain, onClose }) {
-  const [playerName, setPlayerName] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [playerName, setPlayerName] = useState(localStorage.getItem('brick_breaker_name') || '');
+  const [submitted, setSubmitted] = useState(false);
   const [highScores, setHighScores] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchLeaderboard = () => {
+    fetch('/api/scores')
+      .then((res) => res.json())
+      .then((data) => setHighScores(Array.isArray(data) ? data : []))
+      .catch((err) => console.error('Error fetching scores:', err));
+  };
 
   useEffect(() => {
-    // Automatically save score on mount
-    const savedName = localStorage.getItem('brick_breaker_name') || 'Player';
-    setPlayerName(savedName);
+    fetchLeaderboard();
+  }, []);
+
+  const handleSaveScore = (e) => {
+    e.preventDefault();
+    if (!playerName.trim()) return;
+
+    setLoading(true);
+    localStorage.setItem('brick_breaker_name', playerName.trim());
 
     fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerName: savedName, score })
+      body: JSON.stringify({ playerName: playerName.trim(), score })
     })
       .then((res) => res.json())
       .then(() => {
-        setSaved(true);
-        return fetch('/api/scores');
+        setSubmitted(true);
+        setLoading(false);
+        fetchLeaderboard();
       })
-      .then((res) => res.json())
-      .then((data) => {
-        setHighScores(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => console.error('Error saving score:', err));
-  }, [score]);
+      .catch((err) => {
+        console.error('Error saving score:', err);
+        setLoading(false);
+      });
+  };
 
   return (
     <div style={modalOverlayStyle}>
       <div style={modalStyle}>
         <div style={headerStyle}>
           <h2 style={titleStyle}>Game Over!</h2>
-          {onClose && <button onClick={onClose} style={closeIconButtonStyle}>✕</button>}
+          {onClose && <button onClick={onClose} style={closeIconButtonStyle}>✕</button> }
         </div>
         
         <p style={scoreLabelStyle}>Your Score: <strong style={{ color: '#38bdf8' }}>{score}</strong></p>
-        
-        {saved ? (
-          <p style={successStyle}>Score Saved Successfully!</p>
-        ) : (
-          <p style={loadingStyle}>Saving score...</p>
-        )}
 
-        <div style={leaderboardSection}>
-          <h3 style={lbTitleStyle}>Top High Scores</h3>
-          <div style={listStyle}>
-            {highScores.slice(0, 5).map((entry, idx) => (
-              <div key={entry._id || idx} style={rankItemStyle}>
-                <span>{idx + 1}. {entry.playerName}</span>
-                <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{entry.score}</span>
-              </div>
-            ))}
+        {!submitted ? (
+          <form onSubmit={handleSaveScore} style={formStyle}>
+            <input 
+              type="text" 
+              placeholder="Enter your name..." 
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              maxLength={15}
+              style={inputStyle}
+              required
+            />
+            <button type="submit" style={saveButtonStyle} disabled={loading}>
+              {loading ? 'Saving...' : 'Save Score & View Leaderboard'}
+            </button>
+          </form>
+        ) : (
+          <div style={leaderboardSection}>
+            <h3 style={lbTitleStyle}>🏆 Top Leaderboard</h3>
+            <div style={listStyle}>
+              {highScores.slice(0, 5).map((entry, idx) => (
+                <div key={entry._id || idx} style={rankItemStyle}>
+                  <span>{idx + 1}. {entry.playerName}</span>
+                  <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{entry.score} pts</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div style={buttonGroupStyle}>
           <button onClick={onPlayAgain} style={primaryButtonStyle}>Play Again</button>
@@ -96,7 +121,7 @@ const headerStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  marginBottom: '8px'
+  marginBottom: '6px'
 };
 
 const titleStyle = {
@@ -120,21 +145,40 @@ const closeIconButtonStyle = {
 
 const scoreLabelStyle = {
   fontSize: '1.05rem',
-  margin: '6px 0 12px 0',
+  margin: '4px 0 12px 0',
   color: '#cbd5e1'
 };
 
-const successStyle = {
-  color: '#22c55e',
-  fontSize: '0.85rem',
-  fontWeight: '700',
-  marginBottom: '12px'
+const formStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '10px',
+  marginBottom: '16px'
 };
 
-const loadingStyle = {
-  color: '#94a3b8',
-  fontSize: '0.85rem',
-  marginBottom: '12px'
+const inputStyle = {
+  width: '100%',
+  padding: '11px 14px',
+  borderRadius: '10px',
+  border: '1px solid #475569',
+  background: 'rgba(15, 23, 42, 0.8)',
+  color: '#fff',
+  fontSize: '0.95rem',
+  boxSizing: 'border-box',
+  outline: 'none',
+  textAlign: 'center'
+};
+
+const saveButtonStyle = {
+  width: '100%',
+  padding: '11px',
+  borderRadius: '10px',
+  border: 'none',
+  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+  color: '#fff',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+  fontSize: '0.95rem'
 };
 
 const leaderboardSection = {

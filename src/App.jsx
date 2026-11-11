@@ -6,7 +6,7 @@ import LevelClearModal from './components/LevelClearModal';
 import LeaderboardModal from './components/LeaderboardModal';
 
 export default function App() {
-  const [gameStarted, setGameStarted] = useState(false); // Game starts paused initially
+  const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -340,7 +340,7 @@ const boosterButtonStyle = {
 };
 
 const costStyle = {
-  fontSize: '0.65ln',
+  fontSize: '0.65rem',
   color: '#fbbf24'
 };
 
