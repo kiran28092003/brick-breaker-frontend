@@ -7,8 +7,11 @@ export default function GameOverModal({ score, onPlayAgain, onClose }) {
   const [highScores, setHighScores] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 🛑 PASTE YOUR LIVE BACKEND URL HERE (e.g. 'https://your-backend-app.onrender.com')
+  const BACKEND_URL = 'https://YOUR-BACKEND-URL.onrender.com';
+
   const fetchLeaderboard = () => {
-    fetch('/api/scores')
+    fetch(`${BACKEND_URL}/api/scores`)
       .then((res) => res.json())
       .then((data) => setHighScores(Array.isArray(data) ? data : []))
       .catch((err) => console.error('Error fetching scores:', err));
@@ -25,7 +28,7 @@ export default function GameOverModal({ score, onPlayAgain, onClose }) {
     setLoading(true);
     localStorage.setItem('brick_breaker_name', playerName.trim());
 
-    fetch('/api/scores', {
+    fetch(`${BACKEND_URL}/api/scores`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ playerName: playerName.trim(), score })
