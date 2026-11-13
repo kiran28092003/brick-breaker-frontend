@@ -13,7 +13,7 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [finalScore, setFinalScore] = useState(0);
-  const [coins, setCoins] = useState(150);
+  const [coins, setCoins] = useState(225); // Matching reference polish economy
   const [lives, setLives] = useState(3);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [gameKey, setGameKey] = useState(0);
@@ -68,23 +68,25 @@ export default function App() {
 
   return (
     <div style={appContainerStyle}>
-      {/* Advanced Top Navbar */}
+      {/* Professional Top Navigation Bar */}
       <header style={navBarStyle}>
         <div style={brandSectionStyle}>
           <div style={logoIconStyle}>🧱</div>
-          <span style={brandTitleStyle}>BRICK BREAKER</span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={brandTitleStyle}>BRICK BREAKER QUEST</span>
+            <span style={subTitleStyle}>Level {currentLevel} • Arcade Mode</span>
+          </div>
         </div>
 
         <div style={navUtilityGroupStyle}>
-          <div style={badgeStyle}>
-            🪙 <span style={{ color: '#fbbf24', marginLeft: '4px' }}>{coins}</span>
+          <div style={coinBadgeStyle}>
+            🪙 <span style={{ color: '#fbbf24', marginLeft: '6px', fontWeight: '800' }}>{coins}</span>
           </div>
 
-          {/* Pause / Resume Button visible once game starts */}
           {gameStarted && (
             <button 
               onClick={() => setIsPaused(!isPaused)} 
-              style={pauseButtonStyle}
+              style={actionToolbarButtonStyle}
               title={isPaused ? "Resume Game" : "Pause Game"}
             >
               {isPaused ? '▶ Resume' : '⏸ Pause'}
@@ -93,7 +95,7 @@ export default function App() {
 
           <button 
             onClick={() => setSoundEnabled(!soundEnabled)} 
-            style={iconButtonStyle} 
+            style={iconActionButtonStyle} 
             title="Toggle Sound"
           >
             {soundEnabled ? '🔊' : '🔇'}
@@ -101,23 +103,23 @@ export default function App() {
 
           <button 
             onClick={toggleFullscreen} 
-            style={iconButtonStyle} 
+            style={iconActionButtonStyle} 
             title="Toggle Fullscreen"
           >
             ⤢
           </button>
 
-          <div 
+          <button 
             onClick={() => setShowLeaderboard(true)} 
-            style={userAvatarStyle} 
+            style={profileBadgeButtonStyle} 
             title="View Leaderboard"
           >
-            G
-          </div>
+            🏆
+          </button>
         </div>
       </header>
       
-      {/* Main Game Wrapper */}
+      {/* Main Game Wrapper with Professional Layout Constraints */}
       <main style={gameWrapperStyle}>
         <div style={canvasContainerStyle}>
           <GameCanvas 
@@ -134,46 +136,46 @@ export default function App() {
           />
         </div>
 
-        {/* Power-Up Booster Tray */}
+        {/* Professional Power-Up Booster Toolbar */}
         <div style={boosterTrayStyle}>
           <button 
             onClick={() => handleActivateBooster('EXTRA_LIFE', 50)} 
-            style={boosterButtonStyle}
+            style={boosterPillStyle}
           >
             ❤️ +1 Life <span style={costStyle}>50 🪙</span>
           </button>
           <button 
             onClick={() => handleActivateBooster('WIDE_PADDLE', 40)} 
-            style={boosterButtonStyle}
+            style={boosterPillStyle}
           >
             📏 Wide Paddle <span style={costStyle}>40 🪙</span>
           </button>
           <button 
             onClick={() => handleActivateBooster('LASER', 60)} 
-            style={boosterButtonStyle}
+            style={boosterPillStyle}
           >
             ⚡ Laser Cannon <span style={costStyle}>60 🪙</span>
           </button>
         </div>
       </main>
 
-      {/* Initial Welcome Pop-up Modal */}
+      {/* Initial Start Game Professional Modal Overlay */}
       {!gameStarted && (
         <div style={modalOverlayWrapperStyle}>
           <div style={welcomeModalStyle}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🧱🚀</div>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.5rem', color: '#38bdf8' }}>Brick Breaker Quest</h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
-              Destroy bricks, collect power-ups, and climb the global leaderboard!
+            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🧱</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.6rem', fontWeight: '800', color: '#38bdf8' }}>Brick Breaker Quest</h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '24px' }}>
+              Experience high-octane arcade action with dynamic power-ups, smooth Web Audio synthesis, and real-time MongoDB leaderboard tracking.
             </p>
             <button 
               onClick={() => {
                 setGameStarted(true);
                 setIsPaused(false);
               }} 
-              style={startButtonStyle}
+              style={startMainButtonStyle}
             >
-              ▶ Start Game
+              ▶ Play Game Now
             </button>
           </div>
         </div>
@@ -212,17 +214,18 @@ export default function App() {
 }
 
 const appContainerStyle = {
-  backgroundColor: '#030712',
+  backgroundColor: '#070b19',
+  backgroundImage: 'radial-gradient(circle at 50% 0%, #1e1b4b 0%, #070b19 75%)',
   height: '100dvh',
   width: '100vw',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'space-evenly',
+  justifyContent: 'space-between',
   color: '#fff',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   margin: 0,
-  padding: '6px 12px',
+  padding: '12px 16px',
   boxSizing: 'border-box',
   overflow: 'hidden',
   position: 'fixed',
@@ -236,90 +239,105 @@ const navBarStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  background: 'rgba(30, 41, 59, 0.6)',
-  backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(51, 65, 85, 0.8)',
-  borderRadius: '14px',
-  padding: '6px 14px',
-  boxSizing: 'border-box'
+  background: 'rgba(15, 23, 42, 0.75)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  border: '1px solid rgba(99, 102, 241, 0.25)',
+  borderRadius: '16px',
+  padding: '10px 18px',
+  boxSizing: 'border-box',
+  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
 };
 
 const brandSectionStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px'
+  gap: '12px'
 };
 
 const logoIconStyle = {
-  fontSize: '1rem',
-  background: 'rgba(56, 189, 248, 0.2)',
-  padding: '4px 6px',
-  borderRadius: '6px'
+  fontSize: '1.2rem',
+  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(99, 102, 241, 0.3))',
+  padding: '8px 10px',
+  borderRadius: '10px',
+  border: '1px solid rgba(56, 189, 248, 0.4)'
 };
 
 const brandTitleStyle = {
   fontSize: '0.95rem',
   fontWeight: '800',
-  letterSpacing: '-0.025em',
+  letterSpacing: '0.05em',
   background: 'linear-gradient(to right, #38bdf8, #818cf8)',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent'
 };
 
+const subTitleStyle = {
+  fontSize: '0.7rem',
+  color: '#94a3b8',
+  fontWeight: '600'
+};
+
 const navUtilityGroupStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px'
+  gap: '10px'
 };
 
-const badgeStyle = {
-  background: 'rgba(15, 23, 42, 0.8)',
-  border: '1px solid #475569',
-  borderRadius: '8px',
-  padding: '4px 10px',
-  fontSize: '0.8rem',
+const coinBadgeStyle = {
+  background: 'rgba(30, 41, 59, 0.8)',
+  border: '1px solid rgba(71, 85, 105, 0.6)',
+  borderRadius: '12px',
+  padding: '6px 14px',
+  fontSize: '0.85rem',
   fontWeight: '700',
   display: 'flex',
-  alignItems: 'center'
+  alignItems: 'center',
+  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.3)'
 };
 
-const pauseButtonStyle = {
-  background: 'rgba(99, 102, 241, 0.2)',
-  border: '1px solid rgba(99, 102, 241, 0.6)',
-  borderRadius: '8px',
-  padding: '5px 12px',
-  color: '#38bdf8',
+const actionToolbarButtonStyle = {
+  background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+  border: '1px solid rgba(129, 140, 248, 0.5)',
+  borderRadius: '12px',
+  padding: '7px 14px',
+  color: '#fff',
   fontSize: '0.8rem',
   fontWeight: '700',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)',
+  transition: 'all 0.2s ease'
 };
 
-const iconButtonStyle = {
-  background: 'rgba(15, 23, 42, 0.8)',
-  border: '1px solid #475569',
-  borderRadius: '8px',
-  width: '32px',
-  height: '32px',
+const iconActionButtonStyle = {
+  background: 'rgba(30, 41, 59, 0.8)',
+  border: '1px solid rgba(71, 85, 105, 0.6)',
+  borderRadius: '12px',
+  width: '36px',
+  height: '36px',
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
   color: '#fff',
   cursor: 'pointer',
-  fontSize: '0.9rem'
+  fontSize: '0.95rem',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+  transition: 'all 0.2s ease'
 };
 
-const userAvatarStyle = {
-  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-  borderRadius: '8px',
-  width: '32px',
-  height: '32px',
+const profileBadgeButtonStyle = {
+  background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
+  border: '1px solid rgba(168, 85, 247, 0.5)',
+  borderRadius: '12px',
+  width: '36px',
+  height: '36px',
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  fontWeight: 'bold',
-  fontSize: '0.85rem',
+  fontSize: '1rem',
   cursor: 'pointer',
-  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)'
+  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)',
+  transition: 'all 0.2s ease'
 };
 
 const gameWrapperStyle = {
@@ -330,7 +348,9 @@ const gameWrapperStyle = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: '8px'
+  gap: '10px',
+  flex: 1,
+  padding: '6px 0'
 };
 
 const canvasContainerStyle = {
@@ -345,30 +365,32 @@ const boosterTrayStyle = {
   justifyContent: 'space-between',
   width: '100%',
   maxWidth: '920px',
-  gap: '8px'
+  gap: '10px'
 };
 
-const boosterButtonStyle = {
+const boosterPillStyle = {
   flex: 1,
-  background: 'rgba(30, 41, 59, 0.8)',
-  border: '1px solid rgba(99, 102, 241, 0.4)',
-  borderRadius: '10px',
-  padding: '8px',
+  background: 'rgba(15, 23, 42, 0.8)',
+  border: '1px solid rgba(99, 102, 241, 0.35)',
+  borderRadius: '14px',
+  padding: '10px',
   color: '#fff',
-  fontSize: '0.75rem',
+  fontSize: '0.8rem',
   fontWeight: '700',
   cursor: 'pointer',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: '2px',
-  backdropFilter: 'blur(8px)',
-  boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
+  gap: '3px',
+  backdropFilter: 'blur(12px)',
+  boxShadow: '0 8px 16px -4px rgba(0, 0, 0, 0.4)',
+  transition: 'all 0.2s ease'
 };
 
 const costStyle = {
-  fontSize: '0.65rem',
-  color: '#fbbf24'
+  fontSize: '0.7rem',
+  color: '#fbbf24',
+  fontWeight: '800'
 };
 
 const modalOverlayWrapperStyle = {
@@ -381,32 +403,35 @@ const modalOverlayWrapperStyle = {
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: 'rgba(3, 7, 18, 0.85)',
-  backdropFilter: 'blur(8px)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
   zIndex: 1000
 };
 
 const welcomeModalStyle = {
   background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-  padding: '30px',
-  borderRadius: '20px',
+  padding: '36px 30px',
+  borderRadius: '24px',
   textAlign: 'center',
   color: '#fff',
   width: '90%',
-  maxWidth: '380px',
+  maxWidth: '420px',
   border: '1px solid rgba(99, 102, 241, 0.5)',
-  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+  boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9)',
   boxSizing: 'border-box'
 };
 
-const startButtonStyle = {
+const startMainButtonStyle = {
   width: '100%',
-  padding: '13px',
-  borderRadius: '10px',
+  padding: '14px',
+  borderRadius: '14px',
   border: 'none',
   background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
   color: '#fff',
-  fontWeight: 'bold',
+  fontWeight: '800',
   cursor: 'pointer',
-  fontSize: '1rem',
-  boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)'
+  fontSize: '1.05rem',
+  boxShadow: '0 8px 20px rgba(34, 197, 94, 0.45)',
+  letterSpacing: '0.02em',
+  transition: 'all 0.2s ease'
 };
