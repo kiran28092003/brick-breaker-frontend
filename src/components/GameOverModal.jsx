@@ -7,8 +7,7 @@ export default function GameOverModal({ score, onPlayAgain, onClose }) {
   const [highScores, setHighScores] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🛑 PASTE YOUR LIVE BACKEND URL HERE (e.g. 'https://your-backend-app.onrender.com')
-  const BACKEND_URL = 'https://YOUR-BACKEND-URL.onrender.com';
+  const BACKEND_URL = 'https://brick-breaker-backend-r7bd.onrender.com';
 
   const fetchLeaderboard = () => {
     fetch(`${BACKEND_URL}/api/scores`)

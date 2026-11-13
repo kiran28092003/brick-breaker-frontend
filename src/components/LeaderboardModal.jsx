@@ -5,10 +5,9 @@ export default function LeaderboardModal({ onClose }) {
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // 🛑 PASTE YOUR LIVE BACKEND URL HERE (e.g. 'https://your-backend-app.onrender.com')
-    const BACKEND_URL = 'https://YOUR-BACKEND-URL.onrender.com'; 
+  const BACKEND_URL = 'https://brick-breaker-backend-r7bd.onrender.com';
 
+  useEffect(() => {
     fetch(`${BACKEND_URL}/api/scores`)
       .then((res) => res.json())
       .then((data) => {
