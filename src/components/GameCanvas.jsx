@@ -19,6 +19,7 @@ export default function GameCanvas({
   const containerRef = useRef(null);
   
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(0); // Real-time score tracker reference
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
   const livesRef = useRef(lives);
@@ -30,6 +31,11 @@ export default function GameCanvas({
   const updateLives = (newLives) => {
     livesRef.current = newLives;
     setLives(newLives);
+  };
+
+  const updateScore = (points) => {
+    scoreRef.current += points;
+    setScore(scoreRef.current);
   };
 
   const playSound = (type) => {
@@ -151,6 +157,8 @@ export default function GameCanvas({
 
   useEffect(() => {
     setGameOverTriggered(false);
+    scoreRef.current = 0;
+    setScore(0);
     const speedMultiplier = 1 + (level - 1) * 0.2;
 
     gameState.current.paddle = { x: 325, width: 100, height: 15, speed: 8, dx: 0, hasLaser: false };
@@ -295,7 +303,7 @@ export default function GameCanvas({
             const b = bricks[r][c];
             if (b.status > 0 && l.x > b.x && l.x < b.x + 80 && l.y < b.y + 20 && l.y > b.y) {
               b.status -= 1;
-              setScore((s) => s + 10);
+              updateScore(10);
               playSound(b.status === 0 ? 'break' : 'hit');
               createParticles(b.x, b.y, b.color);
               floatingTexts.push({ text: '+10', x: b.x + 40, y: b.y, alpha: 1.0, color: '#38bdf8' });
@@ -352,10 +360,7 @@ export default function GameCanvas({
 
         if (nextLives <= 0) {
           setGameOverTriggered(true);
-          setScore((currentScore) => {
-            onGameOver(currentScore);
-            return currentScore;
-          });
+          onGameOver(scoreRef.current);
         } else {
           const speedMultiplier = 1 + (level - 1) * 0.2;
           gameState.current.balls.push({ 
@@ -390,7 +395,7 @@ export default function GameCanvas({
               ) {
                 ball.dy *= -1;
                 b.status -= 1;
-                setScore((prev) => prev + 10);
+                updateScore(10);
                 createParticles(b.x, b.y, b.color);
                 floatingTexts.push({ text: '+10', x: b.x + 40, y: b.y, alpha: 1.0, color: '#38bdf8' });
                 playSound(b.status === 0 ? 'break' : 'hit');
@@ -408,10 +413,7 @@ export default function GameCanvas({
 
       if (remainingBricks === 0 && bricks.length > 0) {
         playSound('powerup');
-        setScore((currentScore) => {
-          onLevelClear(currentScore);
-          return currentScore;
-        });
+        onLevelClear(scoreRef.current);
       }
 
       // --- 5. Draw & Update Particles ---
