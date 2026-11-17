@@ -11,17 +11,17 @@ export default function AchievementsModal({ score, onClose }) {
 
   return (
     <div style={modalOverlayStyle}>
-      <div style={modalStyle}>
+      <div className="bb-modal-card" style={modalStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#38bdf8' }}>🏅 Arcade Achievements</h2>
-          <button onClick={onClose} style={closeButtonStyle}>✕</button>
+          <button className="bb-icon-btn" onClick={onClose} style={closeButtonStyle}>✕</button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', maxHeight: '240px', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
           {achievements.map((ach) => (
-            <div key={ach.id} style={{ 
+            <div className="bb-card" key={ach.id} style={{ 
               background: ach.unlocked ? 'rgba(34, 197, 94, 0.15)' : 'rgba(15, 23, 42, 0.6)', 
               border: `1px solid ${ach.unlocked ? '#22c55e' : 'rgba(51, 65, 85, 0.6)'}`,
-              padding: '10px 14px', borderRadius: '10px', textAlign: 'left' 
+              padding: '10px 14px', borderRadius: '10px', textAlign: 'left', cursor: 'default'
             }}>
               <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: ach.unlocked ? '#22c55e' : '#94a3b8' }}>
                 {ach.unlocked ? '✅' : '🔒'} {ach.title}
@@ -30,7 +30,7 @@ export default function AchievementsModal({ score, onClose }) {
             </div>
           ))}
         </div>
-        <button onClick={onClose} style={actionButtonStyle}>Back to Game</button>
+        <button className="bb-btn" onClick={onClose} style={actionButtonStyle}>Back to Game</button>
       </div>
     </div>
   );
@@ -38,5 +38,5 @@ export default function AchievementsModal({ score, onClose }) {
 
 const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(8px)', zIndex: 1000 };
 const modalStyle = { background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', padding: '24px', borderRadius: '20px', textAlign: 'center', color: '#fff', width: '90%', maxWidth: '400px', border: '1px solid rgba(99, 102, 241, 0.4)', boxSizing: 'border-box' };
-const closeButtonStyle = { background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' };
+const closeButtonStyle = { background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(71, 85, 105, 0.6)', borderRadius: '8px', width: '30px', height: '30px', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' };
 const actionButtonStyle = { width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#fff', fontWeight: 'bold', cursor: 'pointer' };

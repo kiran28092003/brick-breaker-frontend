@@ -18,7 +18,6 @@ export default function App() {
   const [coins, setCoins] = useState(225);
   const [lives, setLives] = useState(3);
   
-  // Audio preference persistence with localStorage
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const saved = localStorage.getItem('brick_breaker_sound');
     return saved !== null ? JSON.parse(saved) : true;
@@ -82,10 +81,80 @@ export default function App() {
 
   return (
     <div style={appContainerStyle}>
-      {/* Professional Top Navigation Bar */}
+      {/* Global Hover & Animation Styles */}
+      <style>{`
+        .bb-btn {
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease, border-color 0.2s ease !important;
+        }
+        .bb-btn:hover {
+          transform: translateY(-3px) scale(1.03);
+          filter: brightness(1.18);
+          box-shadow: 0 10px 24px rgba(56, 189, 248, 0.45) !important;
+          border-color: rgba(56, 189, 248, 0.85) !important;
+        }
+        .bb-btn:active {
+          transform: translateY(0) scale(0.97);
+        }
+
+        .bb-icon-btn {
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+        }
+        .bb-icon-btn:hover {
+          transform: translateY(-2px) scale(1.08);
+          background-color: rgba(51, 65, 85, 0.95) !important;
+          border-color: #38bdf8 !important;
+          box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4) !important;
+        }
+        .bb-icon-btn:active {
+          transform: scale(0.95);
+        }
+
+        .bb-booster {
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+        }
+        .bb-booster:hover {
+          transform: translateY(-4px);
+          background: rgba(30, 41, 59, 0.95) !important;
+          border-color: #818cf8 !important;
+          box-shadow: 0 12px 24px -4px rgba(99, 102, 241, 0.5) !important;
+        }
+        .bb-booster:active {
+          transform: translateY(-1px) scale(0.98);
+        }
+
+        .bb-card {
+          transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
+        }
+        .bb-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(99, 102, 241, 0.65) !important;
+          box-shadow: 0 8px 20px rgba(15, 23, 42, 0.6) !important;
+        }
+
+        .bb-modal-card {
+          transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+        }
+        .bb-modal-card:hover {
+          box-shadow: 0 0 70px rgba(56, 189, 248, 0.35), inset 0 0 30px rgba(99, 102, 241, 0.25) !important;
+        }
+
+        /* Also apply hover lift to buttons inside child modals */
+        button {
+          transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+        }
+        button:hover {
+          filter: brightness(1.12);
+          transform: translateY(-2px);
+        }
+        button:active {
+          transform: translateY(0) scale(0.98);
+        }
+      `}</style>
+
+      {/* Top Navigation Bar */}
       <header style={navBarStyle}>
         <div style={brandSectionStyle}>
-          <div style={logoIconStyle}>🧱</div>
+          <div className="bb-icon-btn" style={logoIconStyle}>🧱</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={brandTitleStyle}>BRICK BREAKER QUEST</span>
             <span style={subTitleStyle}>Level {currentLevel} • Arcade Mode</span>
@@ -93,12 +162,13 @@ export default function App() {
         </div>
 
         <div style={navUtilityGroupStyle}>
-          <div style={coinBadgeStyle}>
+          <div className="bb-card" style={coinBadgeStyle}>
             🪙 <span style={{ color: '#fbbf24', marginLeft: '6px', fontWeight: '800' }}>{coins}</span>
           </div>
 
           {gameStarted && (
             <button 
+              className="bb-btn"
               onClick={() => setIsPaused(!isPaused)} 
               style={actionToolbarButtonStyle}
               title={isPaused ? "Resume Game" : "Pause Game"}
@@ -108,6 +178,7 @@ export default function App() {
           )}
 
           <button 
+            className="bb-icon-btn"
             onClick={handleToggleSound} 
             style={iconActionButtonStyle} 
             title="Toggle Sound"
@@ -116,6 +187,7 @@ export default function App() {
           </button>
 
           <button 
+            className="bb-icon-btn"
             onClick={toggleFullscreen} 
             style={iconActionButtonStyle} 
             title="Toggle Fullscreen"
@@ -124,6 +196,7 @@ export default function App() {
           </button>
 
           <button 
+            className="bb-icon-btn"
             onClick={() => setShowAchievements(true)} 
             style={iconActionButtonStyle} 
             title="Achievements"
@@ -132,6 +205,7 @@ export default function App() {
           </button>
 
           <button 
+            className="bb-icon-btn"
             onClick={() => setShowLeaderboard(true)} 
             style={profileBadgeButtonStyle} 
             title="View Leaderboard"
@@ -160,28 +234,29 @@ export default function App() {
 
         {/* Power-Up Booster Toolbar */}
         <div style={boosterTrayStyle}>
-          <button onClick={() => handleActivateBooster('EXTRA_LIFE', 50)} style={boosterPillStyle}>
+          <button className="bb-booster" onClick={() => handleActivateBooster('EXTRA_LIFE', 50)} style={boosterPillStyle}>
             ❤️ +1 Life <span style={costStyle}>50 🪙</span>
           </button>
-          <button onClick={() => handleActivateBooster('WIDE_PADDLE', 40)} style={boosterPillStyle}>
+          <button className="bb-booster" onClick={() => handleActivateBooster('WIDE_PADDLE', 40)} style={boosterPillStyle}>
             📏 Wide Paddle <span style={costStyle}>40 🪙</span>
           </button>
-          <button onClick={() => handleActivateBooster('LASER', 60)} style={boosterPillStyle}>
+          <button className="bb-booster" onClick={() => handleActivateBooster('LASER', 60)} style={boosterPillStyle}>
             ⚡ Laser Cannon <span style={costStyle}>60 🪙</span>
           </button>
         </div>
       </main>
 
-      {/* Dynamic, High-End Initial Start Modal */}
+      {/* Initial Start Modal */}
       {!gameStarted && (
         <div style={modalOverlayWrapperStyle}>
-          <div style={welcomeModalStyle}>
-            <div style={modalLogoContainerStyle}>🧱</div>
+          <div className="bb-modal-card" style={welcomeModalStyle}>
+            <div className="bb-icon-btn" style={modalLogoContainerStyle}>🧱</div>
             <h2 style={modalTitleStyle}>Brick Breaker Quest</h2>
             <p style={modalDescStyle}>
               Experience high-octane arcade action with dynamic power-ups, smooth Web Audio synthesis, and real-time MongoDB leaderboard tracking.
             </p>
             <button 
+              className="bb-btn"
               onClick={() => {
                 setGameStarted(true);
                 setIsPaused(false);
@@ -231,7 +306,7 @@ export default function App() {
 const appContainerStyle = { backgroundColor: '#070b19', backgroundImage: 'radial-gradient(circle at 50% 0%, #1e1b4b 0%, #070b19 75%)', height: '100dvh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', color: '#fff', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', margin: 0, padding: '12px 16px', boxSizing: 'border-box', overflow: 'hidden', position: 'fixed', top: 0, left: 0 };
 const navBarStyle = { width: '100%', maxWidth: '980px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '16px', padding: '10px 18px', boxSizing: 'border-box', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)' };
 const brandSectionStyle = { display: 'flex', alignItems: 'center', gap: '12px' };
-const logoIconStyle = { fontSize: '1.2rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(99, 102, 241, 0.3))', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.4)' };
+const logoIconStyle = { fontSize: '1.2rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(99, 102, 241, 0.3))', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.4)', cursor: 'default' };
 const brandTitleStyle = { fontSize: '0.95rem', fontWeight: '800', letterSpacing: '0.05em', background: 'linear-gradient(to right, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
 const subTitleStyle = { fontSize: '0.7rem', color: '#94a3b8', fontWeight: '600' };
 const navUtilityGroupStyle = { display: 'flex', alignItems: 'center', gap: '10px' };
@@ -245,7 +320,6 @@ const boosterTrayStyle = { display: 'flex', justifyContent: 'space-between', wid
 const boosterPillStyle = { flex: 1, background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '14px', padding: '10px', color: '#fff', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', backdropFilter: 'blur(12px)' };
 const costStyle = { fontSize: '0.7rem', color: '#fbbf24', fontWeight: '800' };
 
-// Dynamic & attractive modal styles
 const modalOverlayWrapperStyle = {
   position: 'fixed',
   top: 0,
@@ -313,6 +387,5 @@ const startMainButtonStyle = {
   cursor: 'pointer',
   fontSize: '1.1rem',
   boxShadow: '0 10px 25px rgba(14, 165, 233, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
-  letterSpacing: '0.04em',
-  transition: 'all 0.2s ease'
+  letterSpacing: '0.04em'
 };

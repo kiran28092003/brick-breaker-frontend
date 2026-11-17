@@ -272,12 +272,31 @@ export default function GameCanvas({
 
       ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
-      // --- 1. Draw Paddle ---
-      ctx.fillStyle = paddle.hasLaser ? '#f59e0b' : '#6366f1';
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = paddle.hasLaser ? '#f59e0b' : '#6366f1';
-      ctx.fillRect(paddle.x, VIRTUAL_HEIGHT - 30, paddle.width, paddle.height);
-      ctx.shadowBlur = 0;
+      // --- 1. Draw Sleek Neon Paddle (Slider) ---
+      ctx.save();
+      const paddleY = VIRTUAL_HEIGHT - 30;
+      const paddleGrad = ctx.createLinearGradient(paddle.x, paddleY, paddle.x, paddleY + paddle.height);
+      if (paddle.hasLaser) {
+        paddleGrad.addColorStop(0, '#fbbf24');
+        paddleGrad.addColorStop(1, '#b45309');
+        ctx.shadowColor = '#f59e0b';
+      } else {
+        paddleGrad.addColorStop(0, '#38bdf8');
+        paddleGrad.addColorStop(0.5, '#6366f1');
+        paddleGrad.addColorStop(1, '#312e81');
+        ctx.shadowColor = '#38bdf8';
+      }
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = paddleGrad;
+      ctx.beginPath();
+      ctx.roundRect(paddle.x, paddleY, paddle.width, paddle.height, 8);
+      ctx.fill();
+
+      // Glowing cyan/gold bumper end-caps
+      ctx.fillStyle = paddle.hasLaser ? '#fef08a' : '#bae6fd';
+      ctx.fillRect(paddle.x + 4, paddleY + 3, 6, paddle.height - 6);
+      ctx.fillRect(paddle.x + paddle.width - 10, paddleY + 3, 6, paddle.height - 6);
+      ctx.restore();
 
       if (paddle.hasLaser) {
         ctx.fillStyle = '#ef4444';
@@ -323,21 +342,21 @@ export default function GameCanvas({
 
         // Motion trail effect
         ctx.beginPath();
-        ctx.arc(ball.x - ball.dx * 0.5, ball.y - ball.dy * 0.5, ball.radius * 0.8, 0, Math.PI * 2);
+        ctx.arc(ball.x - ball.dx * 0.6, ball.y - ball.dy * 0.6, ball.radius * 0.85, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
         ctx.fill();
         ctx.closePath();
 
         // Glowing neon ball with radial lighting gradient
         ctx.save();
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 16;
         ctx.shadowColor = '#38bdf8';
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         
         const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, ball.radius);
-        gradient.addColorStop(0, '#bae6fd');
-        gradient.addColorStop(0.5, '#38bdf8');
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(0.4, '#38bdf8');
         gradient.addColorStop(1, '#0284c7');
         
         ctx.fillStyle = gradient;
@@ -402,7 +421,9 @@ export default function GameCanvas({
           if (b.status > 0) {
             remainingBricks++;
             ctx.fillStyle = b.status === 3 ? '#9333ea' : b.status === 2 ? '#e11d48' : b.color;
-            ctx.fillRect(b.x, b.y, 80, 20);
+            ctx.beginPath();
+            ctx.roundRect(b.x, b.y, 80, 20, 4);
+            ctx.fill();
 
             for (let ball of balls) {
               if (
@@ -520,15 +541,15 @@ export default function GameCanvas({
   return (
     <div ref={containerRef} style={wrapperStyle}>
       <div style={hudStyle}>
-        <div style={hudCardStyle}>
+        <div className="bb-card" style={hudCardStyle}>
           <span style={hudLabelStyle}>Score</span>
           <span style={hudValueStyle}>{score}</span>
         </div>
-        <div style={hudCardStyle}>
+        <div className="bb-card" style={hudCardStyle}>
           <span style={hudLabelStyle}>Level</span>
           <span style={hudLevelValueStyle}>{level}</span>
         </div>
-        <div style={hudCardStyle}>
+        <div className="bb-card" style={hudCardStyle}>
           <span style={hudLabelStyle}>Lives</span>
           <span style={hudLifeValueStyle}>{"❤️".repeat(lives)}</span>
         </div>
