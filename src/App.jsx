@@ -172,13 +172,13 @@ export default function App() {
         </div>
       </main>
 
-      {/* Initial Start Modal */}
+      {/* Dynamic, High-End Initial Start Modal */}
       {!gameStarted && (
         <div style={modalOverlayWrapperStyle}>
           <div style={welcomeModalStyle}>
-            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🧱</div>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.6rem', fontWeight: '800', color: '#38bdf8' }}>Brick Breaker Quest</h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '24px' }}>
+            <div style={modalLogoContainerStyle}>🧱</div>
+            <h2 style={modalTitleStyle}>Brick Breaker Quest</h2>
+            <p style={modalDescStyle}>
               Experience high-octane arcade action with dynamic power-ups, smooth Web Audio synthesis, and real-time MongoDB leaderboard tracking.
             </p>
             <button 
@@ -244,6 +244,75 @@ const canvasContainerStyle = { width: '100%', display: 'flex', justifyContent: '
 const boosterTrayStyle = { display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '920px', gap: '10px' };
 const boosterPillStyle = { flex: 1, background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '14px', padding: '10px', color: '#fff', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', backdropFilter: 'blur(12px)' };
 const costStyle = { fontSize: '0.7rem', color: '#fbbf24', fontWeight: '800' };
-const modalOverlayWrapperStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', zIndex: 1000 };
-const welcomeModalStyle = { background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', padding: '36px 30px', borderRadius: '24px', textAlign: 'center', color: '#fff', width: '90%', maxWidth: '420px', border: '1px solid rgba(99, 102, 241, 0.5)', boxSizing: 'border-box' };
-const startMainButtonStyle = { width: '100%', padding: '14px', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: '#fff', fontWeight: '800', cursor: 'pointer', fontSize: '1.05rem', boxShadow: '0 8px 20px rgba(34, 197, 94, 0.45)' };
+
+// Dynamic & attractive modal styles
+const modalOverlayWrapperStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  width: '100vw',
+  height: '100vh',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(3, 7, 18, 0.9)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  zIndex: 1000
+};
+
+const welcomeModalStyle = {
+  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
+  padding: '40px 32px',
+  borderRadius: '28px',
+  textAlign: 'center',
+  color: '#fff',
+  width: '90%',
+  maxWidth: '440px',
+  border: '2px solid rgba(56, 189, 248, 0.5)',
+  boxShadow: '0 0 60px rgba(56, 189, 248, 0.25), inset 0 0 25px rgba(99, 102, 241, 0.2)',
+  boxSizing: 'border-box'
+};
+
+const modalLogoContainerStyle = {
+  fontSize: '3rem',
+  marginBottom: '16px',
+  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(99, 102, 241, 0.3))',
+  display: 'inline-flex',
+  padding: '16px',
+  borderRadius: '20px',
+  border: '1px solid rgba(56, 189, 248, 0.5)',
+  boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+};
+
+const modalTitleStyle = {
+  margin: '0 0 10px 0',
+  fontSize: '1.75rem',
+  fontWeight: '800',
+  background: 'linear-gradient(to right, #38bdf8, #818cf8)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  letterSpacing: '0.02em'
+};
+
+const modalDescStyle = {
+  color: '#94a3b8',
+  fontSize: '0.95rem',
+  lineHeight: '1.6',
+  marginBottom: '28px'
+};
+
+const startMainButtonStyle = {
+  width: '100%',
+  padding: '16px',
+  borderRadius: '16px',
+  border: '1px solid rgba(56, 189, 248, 0.6)',
+  background: 'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)',
+  color: '#fff',
+  fontWeight: '800',
+  cursor: 'pointer',
+  fontSize: '1.1rem',
+  boxShadow: '0 10px 25px rgba(14, 165, 233, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
+  letterSpacing: '0.04em',
+  transition: 'all 0.2s ease'
+};

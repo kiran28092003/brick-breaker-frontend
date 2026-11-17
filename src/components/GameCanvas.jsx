@@ -19,7 +19,7 @@ export default function GameCanvas({
   const containerRef = useRef(null);
   
   const [score, setScore] = useState(0);
-  const scoreRef = useRef(0); // Real-time score tracker reference
+  const scoreRef = useRef(0);
   const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
   const livesRef = useRef(lives);
@@ -317,15 +317,33 @@ export default function GameCanvas({
         if (laserHit || l.y < 0) lasers.splice(i, 1);
       }
 
-      // --- 3. Update & Draw Balls ---
+      // --- 3. Update & Draw Balls with Dynamic Neon Glow & Motion Trails ---
       for (let i = balls.length - 1; i >= 0; i--) {
         const ball = balls[i];
 
+        // Motion trail effect
         ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#38bdf8';
+        ctx.arc(ball.x - ball.dx * 0.5, ball.y - ball.dy * 0.5, ball.radius * 0.8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
         ctx.fill();
         ctx.closePath();
+
+        // Glowing neon ball with radial lighting gradient
+        ctx.save();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        
+        const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, ball.radius);
+        gradient.addColorStop(0, '#bae6fd');
+        gradient.addColorStop(0.5, '#38bdf8');
+        gradient.addColorStop(1, '#0284c7');
+        
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.closePath();
+        ctx.restore();
 
         ball.x += ball.dx;
         ball.y += ball.dy;
