@@ -88,6 +88,7 @@ export default function GameCanvas({
     bricks: [],
     powerUps: [],
     particles: [],
+    floatingTexts: [],
     lasers: [],
     isReseting: false
   });
@@ -134,13 +135,14 @@ export default function GameCanvas({
     for (let r = 0; r < rows; r++) {
       bricks[r] = [];
       for (let c = 0; c < cols; c++) {
-        const hitsRequired = (r === 0 && currentLevel > 1) ? 2 : 1;
+        const isBoss = (r === 0 && currentLevel >= 2 && (c === 3 || c === 4));
+        const hitsRequired = isBoss ? 3 : (r === 0 && currentLevel > 1) ? 2 : 1;
         bricks[r][c] = {
           x: c * (brickWidth + padding) + offsetLeft,
           y: r * (brickHeight + padding) + offsetTop,
           status: hitsRequired,
           maxHits: hitsRequired,
-          color: r === 0 ? '#ff4d4d' : r === 1 ? '#ffa64d' : r === 2 ? '#ffff4d' : '#4dff4d'
+          color: isBoss ? '#9333ea' : r === 0 ? '#ff4d4d' : r === 1 ? '#ffa64d' : r === 2 ? '#ffff4d' : '#4dff4d'
         };
       }
     }
@@ -156,6 +158,7 @@ export default function GameCanvas({
     gameState.current.bricks = initBricks(level);
     gameState.current.powerUps = [];
     gameState.current.particles = [];
+    gameState.current.floatingTexts = [];
     gameState.current.lasers = [];
     gameState.current.isReseting = false;
   }, [level]);
@@ -257,7 +260,7 @@ export default function GameCanvas({
     const loop = () => {
       if (isPaused || gameOverTriggered) return;
 
-      const { paddle, balls, bricks, powerUps, particles, lasers } = gameState.current;
+      const { paddle, balls, bricks, powerUps, particles, floatingTexts, lasers } = gameState.current;
 
       ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
@@ -295,6 +298,7 @@ export default function GameCanvas({
               setScore((s) => s + 10);
               playSound(b.status === 0 ? 'break' : 'hit');
               createParticles(b.x, b.y, b.color);
+              floatingTexts.push({ text: '+10', x: b.x + 40, y: b.y, alpha: 1.0, color: '#38bdf8' });
               laserHit = true;
               break;
             }
@@ -374,7 +378,7 @@ export default function GameCanvas({
           const b = bricks[r][c];
           if (b.status > 0) {
             remainingBricks++;
-            ctx.fillStyle = b.status === 2 ? '#e11d48' : b.color;
+            ctx.fillStyle = b.status === 3 ? '#9333ea' : b.status === 2 ? '#e11d48' : b.color;
             ctx.fillRect(b.x, b.y, 80, 20);
 
             for (let ball of balls) {
@@ -388,6 +392,7 @@ export default function GameCanvas({
                 b.status -= 1;
                 setScore((prev) => prev + 10);
                 createParticles(b.x, b.y, b.color);
+                floatingTexts.push({ text: '+10', x: b.x + 40, y: b.y, alpha: 1.0, color: '#38bdf8' });
                 playSound(b.status === 0 ? 'break' : 'hit');
 
                 if (b.status === 0 && Math.random() < 0.25) {
@@ -428,7 +433,23 @@ export default function GameCanvas({
         }
       }
 
-      // --- 6. Draw & Catch Power-Ups ---
+      // --- 6. Draw Floating Texts ---
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 0.8;
+        ft.alpha -= 0.02;
+        if (ft.alpha <= 0) {
+          floatingTexts.splice(i, 1);
+        } else {
+          ctx.font = 'bold 13px system-ui';
+          ctx.fillStyle = ft.color;
+          ctx.globalAlpha = ft.alpha;
+          ctx.fillText(ft.text, ft.x - 10, ft.y);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      // --- 7. Draw & Catch Power-Ups ---
       for (let i = powerUps.length - 1; i >= 0; i--) {
         const p = powerUps[i];
         p.y += p.dy;
@@ -505,83 +526,12 @@ export default function GameCanvas({
   );
 }
 
-const wrapperStyle = {
-  width: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  boxSizing: 'border-box'
-};
-
-const hudStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  width: '100%',
-  maxWidth: '920px',
-  marginBottom: '8px',
-  gap: '8px'
-};
-
-const hudCardStyle = {
-  flex: 1,
-  background: 'rgba(30, 41, 59, 0.7)',
-  backdropFilter: 'blur(8px)',
-  border: '1px solid rgba(51, 65, 85, 0.8)',
-  borderRadius: '12px',
-  padding: '6px 12px',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
-};
-
-const hudLabelStyle = {
-  fontSize: '0.65rem',
-  color: '#94a3b8',
-  textTransform: 'uppercase',
-  fontWeight: '700',
-  letterSpacing: '0.05em',
-  marginBottom: '1px'
-};
-
-const hudValueStyle = {
-  fontSize: '1.1rem',
-  fontWeight: '800',
-  color: '#38bdf8'
-};
-
-const hudLevelValueStyle = {
-  fontSize: '1.1rem',
-  fontWeight: '800',
-  color: '#fbbf24'
-};
-
-const hudLifeValueStyle = {
-  fontSize: '1rem',
-  fontWeight: '800',
-  color: '#f43f5e'
-};
-
-const canvasContainerStyle = {
-  width: '100%',
-  maxWidth: '920px',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  background: 'rgba(15, 23, 42, 0.7)',
-  backdropFilter: 'blur(12px)',
-  border: '2px solid rgba(99, 102, 241, 0.8)',
-  borderRadius: '16px',
-  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-  overflow: 'hidden',
-  padding: '6px',
-  boxSizing: 'border-box'
-};
-
-const canvasStyle = {
-  display: 'block',
-  borderRadius: '10px',
-  background: '#090d16',
-  touchAction: 'none'
-};
+const wrapperStyle = { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' };
+const hudStyle = { display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '920px', marginBottom: '8px', gap: '8px' };
+const hudCardStyle = { flex: 1, background: 'rgba(30, 41, 59, 0.7)', backdropFilter: 'blur(8px)', border: '1px solid rgba(51, 65, 85, 0.8)', borderRadius: '12px', padding: '6px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)' };
+const hudLabelStyle = { fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '1px' };
+const hudValueStyle = { fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' };
+const hudLevelValueStyle = { fontSize: '1.1rem', fontWeight: '800', color: '#fbbf24' };
+const hudLifeValueStyle = { fontSize: '1rem', fontWeight: '800', color: '#f43f5e' };
+const canvasContainerStyle = { width: '100%', maxWidth: '920px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(12px)', border: '2px solid rgba(99, 102, 241, 0.8)', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', overflow: 'hidden', padding: '6px', boxSizing: 'border-box' };
+const canvasStyle = { display: 'block', borderRadius: '10px', background: '#090d16', touchAction: 'none' };
