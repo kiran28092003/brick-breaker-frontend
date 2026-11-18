@@ -22,15 +22,16 @@ export default function App() {
 
   const hasLoggedResultRef = useRef(false);
 
+  // Leaderboard Filter Tabs: 'Global' | 'Monthly' | 'Weekly' | 'Everyday'
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State (Starts empty, no hardcoded dummy data)
+  // Game History State (Strictly empty by default, no hardcoded entries)
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Global High Scores for Leaderboard (Starts empty, no hardcoded dummy data)
+  // Global High Scores for Leaderboard (Strictly empty by default, no hardcoded entries)
   const [globalScores, setGlobalScores] = useState(() => {
     const saved = localStorage.getItem('bb_global_leaderboard');
     return saved ? JSON.parse(saved) : [];
@@ -87,6 +88,7 @@ export default function App() {
   };
 
   const saveAndPublishScore = (playerName, playerEmail, score, totalRunCoins, maxWave) => {
+    const todayStr = new Date().toLocaleDateString();
     const sessionEntry = {
       id: Date.now(),
       playerName,
@@ -94,7 +96,7 @@ export default function App() {
       maxWave,
       score,
       totalCoins: totalRunCoins,
-      date: new Date().toLocaleDateString()
+      date: todayStr
     };
 
     setGameHistory((prev) => {
@@ -103,7 +105,7 @@ export default function App() {
     });
 
     setGlobalScores((prev) => {
-      const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: maxWave }];
+      const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: maxWave, date: todayStr }];
       return updated.sort((a, b) => b.score - a.score).slice(0, 20);
     });
   };
@@ -117,7 +119,6 @@ export default function App() {
     const totalRunCoins = sessionCoins + endRunCoins;
     setCoins((c) => c + endRunCoins);
 
-    // If user is already logged in, automatically save and submit score
     if (user) {
       saveAndPublishScore(user.name, user.email, score, totalRunCoins, currentWave);
       setScoreSubmitted(true);
@@ -189,6 +190,18 @@ export default function App() {
     setUser(null);
     localStorage.removeItem('bb_user');
   };
+
+  // Filter Leaderboard based on selected tab
+  const getFilteredLeaderboard = () => {
+    const today = new Date().toLocaleDateString();
+    if (leaderboardTab === 'Everyday') {
+      return globalScores.filter(item => item.date === today);
+    }
+    // For weekly/monthly/global, return sorted scores
+    return globalScores;
+  };
+
+  const displayedScores = getFilteredLeaderboard();
 
   return (
     <div style={appContainerStyle}>
@@ -271,13 +284,13 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 2: LEADERBOARD */}
+        {/* VIEW 2: LEADERBOARD (Global, Monthly, Weekly, Everyday) */}
         {activeView === 'leaderboard' && (
           <section style={fullScreenViewContainerStyle}>
-            <div style={sectionEyebrowStyle}>GLOBAL RANKINGS</div>
-            <h2 style={sectionHeadingStyle}>Leaderboard (Top 20)</h2>
+            <div style={sectionEyebrowStyle}>RANKINGS</div>
+            <h2 style={sectionHeadingStyle}>Leaderboard</h2>
             <div style={leaderboardTabsRowStyle}>
-              {['Global', 'Weekly', 'Friends'].map((tab) => (
+              {['Global', 'Monthly', 'Weekly', 'Everyday'].map((tab) => (
                 <button
                   key={tab}
                   className="bb-tactile-btn"
@@ -293,13 +306,13 @@ export default function App() {
               ))}
             </div>
             
-            {globalScores.length === 0 ? (
+            {displayedScores.length === 0 ? (
               <div style={{ padding: '40px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
-                <p>No scores on the leaderboard yet. Be the first to play and set a high score!</p>
+                <p>No scores for {leaderboardTab} yet. Play a game to set a record!</p>
               </div>
             ) : (
               <div style={leaderboardGridFullStyle}>
-                {globalScores.map((entry, index) => {
+                {displayedScores.map((entry, index) => {
                   let badge = `#${index + 1}`;
                   if (index === 0) badge = '🥇';
                   else if (index === 1) badge = '🥈';
@@ -408,7 +421,7 @@ export default function App() {
         )}
       </main>
 
-      {/* GAME OVER MODAL WITH NAME PROMPT & BACK BUTTON */}
+      {/* GAME OVER MODAL */}
       {gameOver && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
