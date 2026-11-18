@@ -24,13 +24,13 @@ export default function App() {
 
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State
+  // Game History State (Starts empty, no hardcoded dummy data)
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Global High Scores for Leaderboard (Top 20)
+  // Global High Scores for Leaderboard (Starts empty, no hardcoded dummy data)
   const [globalScores, setGlobalScores] = useState(() => {
     const saved = localStorage.getItem('bb_global_leaderboard');
     return saved ? JSON.parse(saved) : [];
@@ -86,24 +86,6 @@ export default function App() {
     setActiveView('play');
   };
 
-  const handleGameOver = (score) => {
-    if (hasLoggedResultRef.current) return;
-    hasLoggedResultRef.current = true;
-
-    setFinalScore(score);
-    const endRunCoins = Math.floor(score / 20);
-    const totalRunCoins = sessionCoins + endRunCoins;
-    setCoins((c) => c + endRunCoins);
-
-    // If user is already logged in, automatically save and submit score
-    if (user) {
-      saveAndPublishScore(user.name, user.email, score, totalRunCoins, currentWave);
-      setScoreSubmitted(true);
-    }
-
-    setGameOver(true);
-  };
-
   const saveAndPublishScore = (playerName, playerEmail, score, totalRunCoins, maxWave) => {
     const sessionEntry = {
       id: Date.now(),
@@ -122,8 +104,26 @@ export default function App() {
 
     setGlobalScores((prev) => {
       const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: maxWave }];
-      return updated.sort((a, b) => b.score - a.score).slice(0, 20); // Top 20 high scores
+      return updated.sort((a, b) => b.score - a.score).slice(0, 20);
     });
+  };
+
+  const handleGameOver = (score) => {
+    if (hasLoggedResultRef.current) return;
+    hasLoggedResultRef.current = true;
+
+    setFinalScore(score);
+    const endRunCoins = Math.floor(score / 20);
+    const totalRunCoins = sessionCoins + endRunCoins;
+    setCoins((c) => c + endRunCoins);
+
+    // If user is already logged in, automatically save and submit score
+    if (user) {
+      saveAndPublishScore(user.name, user.email, score, totalRunCoins, currentWave);
+      setScoreSubmitted(true);
+    }
+
+    setGameOver(true);
   };
 
   const handleGameOverScoreSubmit = (e) => {
@@ -135,7 +135,6 @@ export default function App() {
     const endRunCoins = Math.floor(finalScore / 20);
     const totalRunCoins = sessionCoins + endRunCoins;
 
-    // Save user to session if not logged in
     const userData = { email: playerEmail, name: playerName };
     setUser(userData);
     localStorage.setItem('bb_user', JSON.stringify(userData));
@@ -409,7 +408,7 @@ export default function App() {
         )}
       </main>
 
-      {/* GAME OVER MODAL WITH NAME & EMAIL PROMPT */}
+      {/* GAME OVER MODAL WITH NAME PROMPT & BACK BUTTON */}
       {gameOver && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
@@ -432,7 +431,14 @@ export default function App() {
               </div>
             )}
 
-            <button className="bb-tactile-btn" onClick={handleRestart} style={{ ...gold3DButtonStyle, width: '100%' }}>Play Again</button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <button className="bb-tactile-btn" onClick={() => { setGameOver(false); setActiveView('home'); }} style={{ ...glassSecondaryButtonStyle, flex: 1, padding: '12px' }}>
+                ← Back to Home
+              </button>
+              <button className="bb-tactile-btn" onClick={handleRestart} style={{ ...gold3DButtonStyle, flex: 1, padding: '12px' }}>
+                Play Again
+              </button>
+            </div>
           </div>
         </div>
       )}
