@@ -1,30 +1,58 @@
 // frontend/src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
-import GameOverModal from './components/GameOverModal';
-import LevelClearModal from './components/LevelClearModal';
-import LeaderboardModal from './components/LeaderboardModal';
-import AchievementsModal from './components/AchievementsModal';
 
 export default function App() {
-  const [gameStarted, setGameStarted] = useState(false);
+  // Navigation View State: 'home' | 'play' | 'leaderboard' | 'history' | 'login'
+  const [activeView, setActiveView] = useState('home');
+
+  // Game & Progression State
   const [isPaused, setIsPaused] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showAchievements, setShowAchievements] = useState(false);
-  const [currentLevel, setCurrentLevel] = useState(1);
+
+  const [currentWave, setCurrentWave] = useState(1);
+  const [totalScore, setTotalScore] = useState(0);
+  const [wavesClearedCount, setWavesClearedCount] = useState(0);
+
   const [finalScore, setFinalScore] = useState(0);
-  const [coins, setCoins] = useState(225);
+  const [coins, setCoins] = useState(() => Number(localStorage.getItem('bb_coins')) || 150);
   const [lives, setLives] = useState(3);
-  
+  const [gameKey, setGameKey] = useState(0);
+  const [activeBooster, setActiveBooster] = useState(null);
+
+  // Prevent duplicate history logging guard
+  const hasLoggedResultRef = useRef(false);
+
+  // Leaderboard Tab State
+  const [leaderboardTab, setLeaderboardTab] = useState('Global');
+
+  // Game History State
+  const [gameHistory, setGameHistory] = useState(() => {
+    const saved = localStorage.getItem('bb_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // User Auth State
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('bb_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+
+  // Sound Persistence
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const saved = localStorage.getItem('brick_breaker_sound');
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  const [gameKey, setGameKey] = useState(0);
-  const [activeBooster, setActiveBooster] = useState(null);
+  // Sync Stats to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('bb_coins', coins);
+    localStorage.setItem('bb_history', JSON.stringify(gameHistory));
+  }, [coins, gameHistory]);
 
   const handleToggleSound = () => {
     const newState = !soundEnabled;
@@ -32,42 +60,60 @@ export default function App() {
     localStorage.setItem('brick_breaker_sound', JSON.stringify(newState));
   };
 
+  const handleStartGame = () => {
+    setCurrentWave(1);
+    setGameOver(false);
+    setLevelCleared(false);
+    setLives(3);
+    setTotalScore(0);
+    setIsPaused(false);
+    hasLoggedResultRef.current = false;
+    setGameKey((prev) => prev + 1);
+    setActiveView('play');
+  };
+
   const handleGameOver = (score) => {
+    if (hasLoggedResultRef.current) return;
+    hasLoggedResultRef.current = true;
+
     setFinalScore(score);
+    const earnedCoins = Math.floor(score / 20);
+    setCoins((c) => c + earnedCoins);
+
+    setGameHistory((prev) => [
+      { id: Date.now(), wave: currentWave, score, status: 'Game Over', date: new Date().toLocaleDateString() },
+      ...prev
+    ]);
     setGameOver(true);
   };
 
-  const handleLevelClear = (score) => {
+  const handleWaveClear = (score) => {
+    if (hasLoggedResultRef.current) return;
+    hasLoggedResultRef.current = true;
+
     setFinalScore(score);
-    setCoins((c) => c + 25);
+    setTotalScore(score);
+    setCoins((c) => c + 30);
+    setWavesClearedCount((c) => c + 1);
+    
+    // Automatically advance to next wave with increased speed scaling
+    setCurrentWave((w) => w + 1);
+    
+    setGameHistory((prev) => [
+      { id: Date.now(), wave: currentWave, score, status: 'Wave Cleared', date: new Date().toLocaleDateString() },
+      ...prev
+    ]);
     setLevelCleared(true);
   };
 
-  const handleNextLevel = () => {
+  const handleNextWave = () => {
     setLevelCleared(false);
-    setCurrentLevel((l) => l + 1);
+    hasLoggedResultRef.current = false;
     setGameKey((prev) => prev + 1);
   };
 
   const handleRestart = () => {
-    setGameOver(false);
-    setLevelCleared(false);
-    setCurrentLevel(1);
-    setLives(3);
-    setFinalScore(0);
-    setGameStarted(true);
-    setIsPaused(false);
-    setGameKey((prevKey) => prevKey + 1);
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
+    handleStartGame();
   };
 
   const handleActivateBooster = (type, cost) => {
@@ -75,317 +121,348 @@ export default function App() {
       setCoins((c) => c - cost);
       setActiveBooster(type);
     } else {
-      alert('Not enough coins!');
+      alert('Not enough coins! Play more games to earn coins.');
     }
+  };
+
+  const handleAuthSubmit = (e) => {
+    e.preventDefault();
+    if (!emailInput.trim() || passwordInput.length < 6) return;
+    const playerName = emailInput.split('@')[0];
+    const userData = { email: emailInput.trim(), name: playerName };
+    setUser(userData);
+    localStorage.setItem('bb_user', JSON.stringify(userData));
+    setEmailInput('');
+    setPasswordInput('');
+    setActiveView('home');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('bb_user');
   };
 
   return (
     <div style={appContainerStyle}>
-      {/* Global Hover & Animation Styles */}
       <style>{`
-        .bb-btn {
-          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease, border-color 0.2s ease !important;
+        /* Pro Arcade Hover & Interactive Effects */
+        .bb-nav-pill {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
         }
-        .bb-btn:hover {
-          transform: translateY(-3px) scale(1.03);
-          filter: brightness(1.18);
-          box-shadow: 0 10px 24px rgba(56, 189, 248, 0.45) !important;
-          border-color: rgba(56, 189, 248, 0.85) !important;
+        .bb-nav-pill:hover {
+          background: rgba(56, 189, 248, 0.2) !important;
+          color: #ffffff !important;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
         }
-        .bb-btn:active {
-          transform: translateY(0) scale(0.97);
+        .bb-tactile-btn {
+          transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease, box-shadow 0.15s ease;
+          cursor: pointer;
         }
-
-        .bb-icon-btn {
-          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
-        }
-        .bb-icon-btn:hover {
-          transform: translateY(-2px) scale(1.08);
-          background-color: rgba(51, 65, 85, 0.95) !important;
-          border-color: #38bdf8 !important;
-          box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4) !important;
-        }
-        .bb-icon-btn:active {
-          transform: scale(0.95);
-        }
-
-        .bb-booster {
-          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
-        }
-        .bb-booster:hover {
+        .bb-tactile-btn:hover {
           transform: translateY(-4px);
-          background: rgba(30, 41, 59, 0.95) !important;
-          border-color: #818cf8 !important;
-          box-shadow: 0 12px 24px -4px rgba(99, 102, 241, 0.5) !important;
-        }
-        .bb-booster:active {
-          transform: translateY(-1px) scale(0.98);
-        }
-
-        .bb-card {
-          transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
-        }
-        .bb-card:hover {
-          transform: translateY(-2px);
-          border-color: rgba(99, 102, 241, 0.65) !important;
-          box-shadow: 0 8px 20px rgba(15, 23, 42, 0.6) !important;
-        }
-
-        .bb-modal-card {
-          transition: transform 0.3s ease, box-shadow 0.3s ease !important;
-        }
-        .bb-modal-card:hover {
-          box-shadow: 0 0 70px rgba(56, 189, 248, 0.35), inset 0 0 30px rgba(99, 102, 241, 0.25) !important;
-        }
-
-        /* Also apply hover lift to buttons inside child modals */
-        button {
-          transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
-        }
-        button:hover {
           filter: brightness(1.12);
-          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(245, 158, 11, 0.45);
         }
-        button:active {
-          transform: translateY(0) scale(0.98);
+        .bb-tactile-btn:active {
+          transform: translateY(2px);
+        }
+        .bb-card-hover {
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .bb-card-hover:hover {
+          transform: translateY(-4px);
+          border-color: rgba(56, 189, 248, 0.7) !important;
+          box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25);
         }
       `}</style>
 
-      {/* Top Navigation Bar */}
-      <header style={navBarStyle}>
-        <div style={brandSectionStyle}>
-          <div className="bb-icon-btn" style={logoIconStyle}>🧱</div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={brandTitleStyle}>BRICK BREAKER QUEST</span>
-            <span style={subTitleStyle}>Level {currentLevel} • Arcade Mode</span>
-          </div>
-        </div>
-
-        <div style={navUtilityGroupStyle}>
-          <div className="bb-card" style={coinBadgeStyle}>
-            🪙 <span style={{ color: '#fbbf24', marginLeft: '6px', fontWeight: '800' }}>{coins}</span>
+      {/* Top Professional Navbar */}
+      <header style={headerWrapperStyle}>
+        <div style={topBrandRowStyle}>
+          <div className="bb-nav-pill" style={brandIdentityStyle} onClick={() => setActiveView('home')}>
+            <div style={brandOrbIconStyle}>🧱</div>
+            <span style={brandNameStyle}>BRICKS BREAKER</span>
           </div>
 
-          {gameStarted && (
-            <button 
-              className="bb-btn"
-              onClick={() => setIsPaused(!isPaused)} 
-              style={actionToolbarButtonStyle}
-              title={isPaused ? "Resume Game" : "Pause Game"}
-            >
-              {isPaused ? '▶ Resume' : '⏸ Pause'}
+          <div style={utilityPillsStyle}>
+            <div style={coinDisplayStyle}>
+              🪙 <span style={{ color: '#fbbf24', fontWeight: '800' }}>{coins}</span>
+            </div>
+            <button className="bb-nav-pill" onClick={handleToggleSound} style={miniIconBtnStyle} title="Toggle Audio">
+              {soundEnabled ? '🔊' : '🔇'}
             </button>
-          )}
-
-          <button 
-            className="bb-icon-btn"
-            onClick={handleToggleSound} 
-            style={iconActionButtonStyle} 
-            title="Toggle Sound"
-          >
-            {soundEnabled ? '🔊' : '🔇'}
-          </button>
-
-          <button 
-            className="bb-icon-btn"
-            onClick={toggleFullscreen} 
-            style={iconActionButtonStyle} 
-            title="Toggle Fullscreen"
-          >
-            ⤢
-          </button>
-
-          <button 
-            className="bb-icon-btn"
-            onClick={() => setShowAchievements(true)} 
-            style={iconActionButtonStyle} 
-            title="Achievements"
-          >
-            🏅
-          </button>
-
-          <button 
-            className="bb-icon-btn"
-            onClick={() => setShowLeaderboard(true)} 
-            style={profileBadgeButtonStyle} 
-            title="View Leaderboard"
-          >
-            🏆
-          </button>
+          </div>
         </div>
+
+        <nav style={navPillsContainerStyle}>
+          <button className="bb-nav-pill" onClick={() => setActiveView('home')} style={getNavPillStyle(activeView === 'home')}>Home</button>
+          <button className="bb-nav-pill" onClick={() => setActiveView('leaderboard')} style={getNavPillStyle(activeView === 'leaderboard')}>Leaderboard</button>
+          <button className="bb-nav-pill" onClick={() => setActiveView('history')} style={getNavPillStyle(activeView === 'history')}>History</button>
+          <button className="bb-nav-pill" onClick={() => setActiveView('login')} style={getNavPillStyle(activeView === 'login')}>
+            {user ? `👤 ${user.name}` : 'Login'}
+          </button>
+        </nav>
       </header>
-      
-      {/* Main Game Wrapper */}
-      <main style={gameWrapperStyle}>
-        <div style={canvasContainerStyle}>
-          <GameCanvas 
-            key={gameKey} 
-            level={currentLevel}
-            lives={lives}
-            setLives={setLives}
-            soundEnabled={soundEnabled}
-            activeBooster={activeBooster}
-            onBoosterConsumed={() => setActiveBooster(null)}
-            onGameOver={handleGameOver} 
-            onLevelClear={handleLevelClear}
-            isPaused={!gameStarted || isPaused || gameOver || levelCleared || showLeaderboard || showAchievements} 
-          />
-        </div>
 
-        {/* Power-Up Booster Toolbar */}
-        <div style={boosterTrayStyle}>
-          <button className="bb-booster" onClick={() => handleActivateBooster('EXTRA_LIFE', 50)} style={boosterPillStyle}>
-            ❤️ +1 Life <span style={costStyle}>50 🪙</span>
-          </button>
-          <button className="bb-booster" onClick={() => handleActivateBooster('WIDE_PADDLE', 40)} style={boosterPillStyle}>
-            📏 Wide Paddle <span style={costStyle}>40 🪙</span>
-          </button>
-          <button className="bb-booster" onClick={() => handleActivateBooster('LASER', 60)} style={boosterPillStyle}>
-            ⚡ Laser Cannon <span style={costStyle}>60 🪙</span>
-          </button>
-        </div>
+      {/* Main Viewport */}
+      <main style={mainContentAreaStyle}>
+        
+        {/* VIEW 1: HOME (Arcade Launch Screen) */}
+        {activeView === 'home' && (
+          <section style={heroFullContainerStyle}>
+            <div style={heroLeftColumnStyle}>
+              <div style={heroTaglineStyle}>✦ CLASSIC ARCADE ACTION ✦</div>
+              <h1 style={heroHeadlineStyle}>
+                Smash bricks, <br />
+                <span style={heroGradientTextStyle}>chase high scores.</span>
+              </h1>
+              <p style={heroDescriptionStyle}>
+                Experience pure arcade physics. Catch power-ups, trigger multi-balls, and survive escalating wave speeds.
+              </p>
+              <div style={heroButtonRowStyle}>
+                <button className="bb-tactile-btn" onClick={handleStartGame} style={gold3DButtonStyle}>
+                  ▶ PLAY GAME
+                </button>
+              </div>
+              <div style={metricsStripStyle}>
+                <div style={metricItemStyle}><span style={metricNumberStyle}>ENDLESS</span><span style={metricLabelStyle}>WAVES</span></div>
+                <div style={metricItemStyle}><span style={metricNumberStyle}>4</span><span style={metricLabelStyle}>POWER-UPS</span></div>
+                <div style={metricItemStyle}><span style={metricNumberStyle}>LIVE</span><span style={metricLabelStyle}>SCALING</span></div>
+              </div>
+            </div>
+
+            <div style={heroRightIslandContainerStyle}>
+              <div style={islandGraphicStyle}>
+                <div style={speechBubbleOverlayStyle}>
+                  Clear all bricks to advance to the next wave!
+                </div>
+                <div style={mascotOrbFloatingStyle}>
+                  <div style={mascotEyesStyle}><span style={mascotEyeStyle}/><span style={mascotEyeStyle}/></div>
+                  <div style={mascotSmileStyle}/>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* VIEW 2: LEADERBOARD */}
+        {activeView === 'leaderboard' && (
+          <section style={fullScreenViewContainerStyle}>
+            <div style={sectionEyebrowStyle}>TOP PLAYERS</div>
+            <h2 style={sectionHeadingStyle}>Leaderboard</h2>
+            <div style={leaderboardTabsRowStyle}>
+              {['Global', 'Weekly', 'Friends'].map((tab) => (
+                <button
+                  key={tab}
+                  className="bb-tactile-btn"
+                  onClick={() => setLeaderboardTab(tab)}
+                  style={{
+                    ...leaderboardTabBtnStyle,
+                    background: leaderboardTab === tab ? '#f59e0b' : 'rgba(15,35,52,0.85)',
+                    color: leaderboardTab === tab ? '#0f172a' : '#cbd5e1'
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div style={leaderboardGridFullStyle}>
+              <div style={leaderboardRowStyle} className="bb-card-hover">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{ fontSize: '1.4rem' }}>🥇</span>
+                  <div>
+                    <strong style={{ color: '#fff', fontSize: '1rem' }}>{user ? user.name : 'ArcadeMaster'}</strong>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Cleared: {wavesClearedCount}</div>
+                  </div>
+                </div>
+                <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>{totalScore.toLocaleString()} pts</span>
+              </div>
+              <div style={leaderboardRowStyle} className="bb-card-hover">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{ fontSize: '1.4rem' }}>🥈</span>
+                  <div>
+                    <strong style={{ color: '#fff', fontSize: '1rem' }}>NeonStriker</strong>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Cleared: 12</div>
+                  </div>
+                </div>
+                <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>3,450 pts</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* VIEW 3: HISTORY */}
+        {activeView === 'history' && (
+          <section style={cardViewContainerStyle}>
+            <div style={sectionEyebrowStyle}>SESSION LOGS</div>
+            <h2 style={sectionHeadingStyle}>Game History</h2>
+            {gameHistory.length === 0 ? (
+              <p style={{ color: '#94a3b8' }}>No matches recorded yet. Play an arcade session to log your runs!</p>
+            ) : (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                {gameHistory.map(h => (
+                  <div key={h.id} style={historyItemStyle} className="bb-card-hover">
+                    <div>
+                      <strong style={{ color: '#38bdf8' }}>Wave {h.wave}</strong>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ color: h.status === 'Wave Cleared' ? '#34d399' : '#f43f5e', fontWeight: 'bold' }}>{h.status}</div>
+                      <span style={{ color: '#fbbf24', fontWeight: '800' }}>{h.score} pts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* VIEW 4: LOGIN */}
+        {activeView === 'login' && (
+          <section style={loginCardStyle} className="bb-card-hover">
+            <div style={sectionEyebrowStyle}>ACCOUNT ACCESS</div>
+            <h2 style={sectionHeadingStyle}>{user ? `Hi, ${user.name}!` : isSignUp ? 'Create Account' : 'Welcome back'}</h2>
+            {user ? (
+              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <p style={{ color: '#94a3b8', marginBottom: '20px' }}>Logged in as <strong style={{ color: '#38bdf8' }}>{user.email}</strong></p>
+                <button className="bb-tactile-btn" onClick={handleLogout} style={{ ...glassSecondaryButtonStyle, width: '100%' }}>Sign Out</button>
+              </div>
+            ) : (
+              <form onSubmit={handleAuthSubmit} style={loginFormStyle}>
+                <input type="email" placeholder="Email address" value={emailInput} onChange={e => setEmailInput(e.target.value)} style={loginInputStyle} required />
+                <input type="password" placeholder="Password (6+ characters)" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} minLength={6} style={loginInputStyle} required />
+                <button type="submit" className="bb-tactile-btn" style={{ ...gold3DButtonStyle, width: '100%', marginTop: '6px' }}>{isSignUp ? 'Sign Up' : 'Log In'}</button>
+                <button type="button" onClick={() => setIsSignUp(!isSignUp)} style={textLinkButtonStyle}>{isSignUp ? 'Already have an account? Log In' : 'Create an account'}</button>
+              </form>
+            )}
+          </section>
+        )}
+
+        {/* VIEW 5: GAMEPLAY PLAYGROUND */}
+        {activeView === 'play' && (
+          <div style={gameplayWrapperStyle}>
+            <div style={gameTopControlsStyle}>
+              <button className="bb-nav-pill" onClick={() => setActiveView('home')} style={backMapBtnStyle}>
+                ← Exit to Home
+              </button>
+              <button className="bb-nav-pill" onClick={() => setIsPaused(!isPaused)} style={pauseBtnStyle}>{isPaused ? '▶ Resume' : '⏸ Pause'}</button>
+            </div>
+
+            <GameCanvas
+              key={gameKey}
+              level={currentWave}
+              lives={lives}
+              setLives={setLives}
+              soundEnabled={soundEnabled}
+              activeBooster={activeBooster}
+              onBoosterConsumed={() => setActiveBooster(null)}
+              onGameOver={handleGameOver}
+              onLevelClear={handleWaveClear}
+              isPaused={isPaused || gameOver || levelCleared}
+            />
+
+            <div style={boosterTrayStyle}>
+              <button className="bb-tactile-btn" onClick={() => handleActivateBooster('EXTRA_LIFE', 40)} style={boosterPillStyle}>❤️ +1 Life <span style={costStyle}>40 🪙</span></button>
+              <button className="bb-tactile-btn" onClick={() => handleActivateBooster('WIDE_PADDLE', 30)} style={boosterPillStyle}>📏 Wide Paddle <span style={costStyle}>30 🪙</span></button>
+              <button className="bb-tactile-btn" onClick={() => handleActivateBooster('LASER', 50)} style={boosterPillStyle}>⚡ Laser Cannon <span style={costStyle}>50 🪙</span></button>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Initial Start Modal */}
-      {!gameStarted && (
-        <div style={modalOverlayWrapperStyle}>
-          <div className="bb-modal-card" style={welcomeModalStyle}>
-            <div className="bb-icon-btn" style={modalLogoContainerStyle}>🧱</div>
-            <h2 style={modalTitleStyle}>Brick Breaker Quest</h2>
-            <p style={modalDescStyle}>
-              Experience high-octane arcade action with dynamic power-ups, smooth Web Audio synthesis, and real-time MongoDB leaderboard tracking.
-            </p>
-            <button 
-              className="bb-btn"
-              onClick={() => {
-                setGameStarted(true);
-                setIsPaused(false);
-              }} 
-              style={startMainButtonStyle}
-            >
-              ▶ Play Game Now
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Global Modals */}
       {gameOver && (
-        <div style={modalOverlayWrapperStyle}>
-          <GameOverModal 
-            score={finalScore} 
-            onPlayAgain={handleRestart}
-            onClose={() => setGameOver(false)} 
-          />
+        <div style={modalOverlayStyle}>
+          <div style={modalCardStyle} className="bb-card-hover">
+            <h2>Game Over</h2>
+            <p>Final Score: {finalScore}</p>
+            <p style={{ color: '#fbbf24', fontSize: '0.85rem', marginBottom: '16px' }}>🪙 Coins Saved to Account!</p>
+            <button className="bb-tactile-btn" onClick={handleRestart} style={gold3DButtonStyle}>Play Again</button>
+          </div>
         </div>
       )}
 
       {levelCleared && (
-        <div style={modalOverlayWrapperStyle}>
-          <LevelClearModal 
-            level={currentLevel}
-            score={finalScore}
-            coinsEarned={25}
-            onNextLevel={handleNextLevel}
-            onReplay={handleRestart}
-          />
+        <div style={modalOverlayStyle}>
+          <div style={modalCardStyle} className="bb-card-hover">
+            <h2>Wave Cleared!</h2>
+            <p>Score: {finalScore} • +30 Coins Earned</p>
+            <button className="bb-tactile-btn" onClick={handleNextWave} style={gold3DButtonStyle}>
+              Proceed to Wave {currentWave} →
+            </button>
+          </div>
         </div>
-      )}
-
-      {showLeaderboard && (
-        <LeaderboardModal onClose={() => setShowLeaderboard(false)} />
-      )}
-
-      {showAchievements && (
-        <AchievementsModal score={finalScore} onClose={() => setShowAchievements(false)} />
       )}
     </div>
   );
 }
 
-const appContainerStyle = { backgroundColor: '#070b19', backgroundImage: 'radial-gradient(circle at 50% 0%, #1e1b4b 0%, #070b19 75%)', height: '100dvh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', color: '#fff', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', margin: 0, padding: '12px 16px', boxSizing: 'border-box', overflow: 'hidden', position: 'fixed', top: 0, left: 0 };
-const navBarStyle = { width: '100%', maxWidth: '980px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '16px', padding: '10px 18px', boxSizing: 'border-box', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)' };
-const brandSectionStyle = { display: 'flex', alignItems: 'center', gap: '12px' };
-const logoIconStyle = { fontSize: '1.2rem', background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(99, 102, 241, 0.3))', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.4)', cursor: 'default' };
-const brandTitleStyle = { fontSize: '0.95rem', fontWeight: '800', letterSpacing: '0.05em', background: 'linear-gradient(to right, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
-const subTitleStyle = { fontSize: '0.7rem', color: '#94a3b8', fontWeight: '600' };
-const navUtilityGroupStyle = { display: 'flex', alignItems: 'center', gap: '10px' };
-const coinBadgeStyle = { background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(71, 85, 105, 0.6)', borderRadius: '12px', padding: '6px 14px', fontSize: '0.85rem', fontWeight: '700', display: 'flex', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.3)' };
-const actionToolbarButtonStyle = { background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)', border: '1px solid rgba(129, 140, 248, 0.5)', borderRadius: '12px', padding: '7px 14px', color: '#fff', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)' };
-const iconActionButtonStyle = { background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(71, 85, 105, 0.6)', borderRadius: '12px', width: '36px', height: '36px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', cursor: 'pointer', fontSize: '0.95rem' };
-const profileBadgeButtonStyle = { background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', border: '1px solid rgba(168, 85, 247, 0.5)', borderRadius: '12px', width: '36px', height: '36px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1rem', cursor: 'pointer' };
-const gameWrapperStyle = { position: 'relative', width: '100%', maxWidth: '980px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', flex: 1, padding: '6px 0' };
-const canvasContainerStyle = { width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' };
+// ==========================================
+// STYLES
+// ==========================================
+const appContainerStyle = { minHeight: '100vh', width: '100vw', backgroundColor: '#061320', backgroundImage: 'radial-gradient(circle at 50% 15%, #0c3547 0%, #061320 75%)', color: '#f8fafc', fontFamily: 'system-ui, -apple-system, sans-serif', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflowX: 'hidden', margin: 0, padding: 0 };
+const headerWrapperStyle = { width: '100%', padding: '14px 32px', borderBottom: '1px solid rgba(56, 189, 248, 0.12)', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box', backgroundColor: 'rgba(6, 19, 32, 0.85)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100 };
+const topBrandRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const brandIdentityStyle = { display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '6px 12px', borderRadius: '12px' };
+const brandOrbIconStyle = { width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #38bdf8 0%, #a855f7 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.1rem', boxShadow: '0 0 20px rgba(56, 189, 248, 0.5)' };
+const brandNameStyle = { fontWeight: '900', fontSize: '1.05rem', letterSpacing: '0.04em', color: '#ffffff' };
+const utilityPillsStyle = { display: 'flex', alignItems: 'center', gap: '10px' };
+const coinDisplayStyle = { background: 'rgba(15, 35, 52, 0.85)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '20px', padding: '6px 14px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' };
+const miniIconBtnStyle = { background: 'rgba(15, 35, 52, 0.85)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' };
+
+const navPillsContainerStyle = { display: 'flex', flexWrap: 'wrap', gap: '8px' };
+const getNavPillStyle = (isActive) => ({ background: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent', border: isActive ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent', color: isActive ? '#ffffff' : '#cbd5e1', padding: '8px 16px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '700' });
+const mainContentAreaStyle = { width: '100%', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px', boxSizing: 'border-box' };
+
+const heroFullContainerStyle = { width: '100%', maxWidth: '1200px', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '40px', alignItems: 'center', boxSizing: 'border-box' };
+const heroLeftColumnStyle = { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' };
+const heroTaglineStyle = { color: '#fbbf24', fontSize: '0.78rem', fontWeight: '800', letterSpacing: '0.12em', marginBottom: '14px' };
+const heroHeadlineStyle = { fontSize: 'clamp(2.8rem, 5vw, 4.2rem)', fontWeight: '900', lineHeight: '1.05', margin: '0 0 18px 0', color: '#ffffff' };
+const heroGradientTextStyle = { background: 'linear-gradient(90deg, #34d399 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
+const heroDescriptionStyle = { color: '#cbd5e1', fontSize: '1.1rem', lineHeight: '1.6', margin: '0 0 32px 0', maxWidth: '480px' };
+const heroButtonRowStyle = { display: 'flex', gap: '16px', width: '100%', maxWidth: '480px', marginBottom: '40px' };
+
+const gold3DButtonStyle = { flex: 1, background: 'linear-gradient(180deg, #fde047 0%, #f59e0b 100%)', color: '#0f172a', border: 'none', borderRadius: '16px', padding: '16px 24px', fontSize: '1.05rem', fontWeight: '800', boxShadow: '0 6px 0 #b45309, 0 14px 28px rgba(245, 158, 11, 0.35)' };
+const glassSecondaryButtonStyle = { flex: 1, background: 'rgba(15, 41, 61, 0.75)', color: '#ffffff', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '16px', padding: '16px 24px', fontSize: '1.05rem', fontWeight: '700' };
+
+const metricsStripStyle = { display: 'flex', gap: '48px' };
+const metricItemStyle = { display: 'flex', flexDirection: 'column' };
+const metricNumberStyle = { fontSize: '1.8rem', fontWeight: '900', color: '#ffffff' };
+const metricLabelStyle = { fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.08em', color: '#94a3b8' };
+
+const heroRightIslandContainerStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' };
+const islandGraphicStyle = { position: 'relative', width: '380px', height: '380px', borderRadius: '50%', background: 'radial-gradient(circle, #0e7490 0%, #065f46 70%, #061320 100%)', border: '6px solid rgba(56,189,248,0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 60px rgba(14,116,144,0.4)' };
+const speechBubbleOverlayStyle = { position: 'absolute', bottom: '30px', background: '#fff', color: '#0f172a', padding: '12px 18px', borderRadius: '16px', fontSize: '0.85rem', fontWeight: '700', boxShadow: '0 10px 25px rgba(0,0,0,0.4)', textAlign: 'center', maxWidth: '220px' };
+const mascotOrbFloatingStyle = { width: '80px', height: '80px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #7dd3fc 0%, #0284c7 75%, #0369a1 100%)', border: '3px solid #fff', boxShadow: '0 10px 25px rgba(2,132,199,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', transform: 'translateY(-30px)' };
+const mascotEyesStyle = { display: 'flex', gap: '14px' };
+const mascotEyeStyle = { width: '8px', height: '10px', borderRadius: '50%', background: '#0f172a' };
+const mascotSmileStyle = { width: '18px', height: '9px', borderBottom: '3px solid #0f172a', borderRadius: '0 0 12px 12px' };
+
+const cardViewContainerStyle = { width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
+const fullScreenViewContainerStyle = { width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
+const sectionEyebrowStyle = { color: '#fbbf24', fontSize: '0.72rem', fontWeight: '800', letterSpacing: '0.12em', marginBottom: '6px' };
+const sectionHeadingStyle = { fontSize: '2rem', fontWeight: '900', margin: '0 0 10px 0', color: '#ffffff' };
+
+const leaderboardTabsRowStyle = { display: 'flex', gap: '8px', marginBottom: '16px', width: '100%' };
+const leaderboardTabBtnStyle = { flex: 1, padding: '10px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' };
+const leaderboardGridFullStyle = { display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' };
+const leaderboardRowStyle = { background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '16px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' };
+
+const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(13,33,51,0.85)', border: '1px solid rgba(56,189,248,0.15)', padding: '12px 16px', borderRadius: '12px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' };
+
+const loginCardStyle = { width: '100%', maxWidth: '420px', background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '24px', padding: '32px 26px', boxSizing: 'border-box' };
+const loginFormStyle = { display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '18px' };
+const loginInputStyle = { width: '100%', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(56, 189, 248, 0.25)', background: '#071726', color: '#ffffff', fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none' };
+const textLinkButtonStyle = { background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', marginTop: '6px' };
+
+const gameplayWrapperStyle = { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' };
+const gameTopControlsStyle = { width: '100%', maxWidth: '920px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const backMapBtnStyle = { background: 'rgba(15, 35, 52, 0.85)', border: '1px solid rgba(56, 189, 248, 0.25)', color: '#cbd5e1', padding: '6px 14px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '700' };
+const pauseBtnStyle = { background: 'rgba(56, 189, 248, 0.2)', border: '1px solid rgba(56, 189, 248, 0.45)', color: '#38bdf8', padding: '6px 14px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '700' };
 const boosterTrayStyle = { display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '920px', gap: '10px' };
-const boosterPillStyle = { flex: 1, background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '14px', padding: '10px', color: '#fff', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', backdropFilter: 'blur(12px)' };
-const costStyle = { fontSize: '0.7rem', color: '#fbbf24', fontWeight: '800' };
+const boosterPillStyle = { flex: 1, background: 'rgba(13, 33, 51, 0.85)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '14px', padding: '10px', color: '#fff', fontSize: '0.8rem', fontWeight: '700', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' };
+const costStyle = { fontSize: '0.72rem', color: '#fbbf24', fontWeight: '800' };
 
-const modalOverlayWrapperStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: 'rgba(3, 7, 18, 0.9)',
-  backdropFilter: 'blur(16px)',
-  WebkitBackdropFilter: 'blur(16px)',
-  zIndex: 1000
-};
-
-const welcomeModalStyle = {
-  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
-  padding: '40px 32px',
-  borderRadius: '28px',
-  textAlign: 'center',
-  color: '#fff',
-  width: '90%',
-  maxWidth: '440px',
-  border: '2px solid rgba(56, 189, 248, 0.5)',
-  boxShadow: '0 0 60px rgba(56, 189, 248, 0.25), inset 0 0 25px rgba(99, 102, 241, 0.2)',
-  boxSizing: 'border-box'
-};
-
-const modalLogoContainerStyle = {
-  fontSize: '3rem',
-  marginBottom: '16px',
-  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(99, 102, 241, 0.3))',
-  display: 'inline-flex',
-  padding: '16px',
-  borderRadius: '20px',
-  border: '1px solid rgba(56, 189, 248, 0.5)',
-  boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
-};
-
-const modalTitleStyle = {
-  margin: '0 0 10px 0',
-  fontSize: '1.75rem',
-  fontWeight: '800',
-  background: 'linear-gradient(to right, #38bdf8, #818cf8)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  letterSpacing: '0.02em'
-};
-
-const modalDescStyle = {
-  color: '#94a3b8',
-  fontSize: '0.95rem',
-  lineHeight: '1.6',
-  marginBottom: '28px'
-};
-
-const startMainButtonStyle = {
-  width: '100%',
-  padding: '16px',
-  borderRadius: '16px',
-  border: '1px solid rgba(56, 189, 248, 0.6)',
-  background: 'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)',
-  color: '#fff',
-  fontWeight: '800',
-  cursor: 'pointer',
-  fontSize: '1.1rem',
-  boxShadow: '0 10px 25px rgba(14, 165, 233, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
-  letterSpacing: '0.04em'
-};
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
+const modalCardStyle = { background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', padding: '30px', borderRadius: '24px', textAlign: 'center', color: '#fff', width: '90%', maxWidth: '380px', border: '1px solid rgba(56,189,248,0.4)' };
