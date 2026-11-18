@@ -13,6 +13,7 @@ export default function App() {
 
   const [currentWave, setCurrentWave] = useState(1);
   const [totalScore, setTotalScore] = useState(0);
+  const [sessionCoins, setSessionCoins] = useState(0); // Coins earned in current session run
   const [wavesClearedCount, setWavesClearedCount] = useState(0);
 
   const [finalScore, setFinalScore] = useState(0);
@@ -21,13 +22,13 @@ export default function App() {
   const [gameKey, setGameKey] = useState(0);
   const [activeBooster, setActiveBooster] = useState(null);
 
-  // Prevent duplicate history logging guard
+  // Prevent duplicate game over logging guard
   const hasLoggedResultRef = useRef(false);
 
   // Leaderboard Tab State
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State (Personal local logs)
+  // Game History State (Session-based runs sorted by top scores)
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
@@ -79,6 +80,8 @@ export default function App() {
     setLevelCleared(false);
     setLives(3);
     setTotalScore(0);
+    setSessionCoins(0);
+    setWavesClearedCount(0);
     setIsPaused(false);
     hasLoggedResultRef.current = false;
     setGameKey((prev) => prev + 1);
@@ -90,52 +93,41 @@ export default function App() {
     hasLoggedResultRef.current = true;
 
     setFinalScore(score);
-    const earnedCoins = Math.floor(score / 20);
-    setCoins((c) => c + earnedCoins);
+    const endRunCoins = Math.floor(score / 20);
+    const totalRunCoins = sessionCoins + endRunCoins;
+    setCoins((c) => c + endRunCoins);
 
-    const newEntry = {
+    const sessionEntry = {
       id: Date.now(),
-      wave: currentWave,
+      maxWave: currentWave,
       score,
-      coinsEarned: earnedCoins,
-      livesRemaining: lives,
-      status: 'Game Over',
+      totalCoins: totalRunCoins,
       date: new Date().toLocaleDateString()
     };
 
-    setGameHistory((prev) => [newEntry, ...prev]);
+    // Add and sort history by top scores descending
+    setGameHistory((prev) => {
+      const updated = [sessionEntry, ...prev];
+      return updated.sort((a, b) => b.score - a.score);
+    });
 
-    // Push to global leaderboard if user is logged in
+    // Push to global leaderboard if applicable
     const playerName = user ? user.name : 'Guest Player';
     setGlobalScores((prev) => {
-      const updated = [...prev, { name: playerName, score, coins: earnedCoins, waves: currentWave }];
-      return updated.sort((a, b) => b.score - a.score).slice(0, 20); // Keep top 20
+      const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: currentWave }];
+      return updated.sort((a, b) => b.score - a.score).slice(0, 20);
     });
 
     setGameOver(true);
   };
 
   const handleWaveClear = (score) => {
-    if (hasLoggedResultRef.current) return;
-    hasLoggedResultRef.current = true;
-
     setFinalScore(score);
     setTotalScore(score);
-    const earnedCoins = 30;
-    setCoins((c) => c + earnedCoins);
+    const waveCoins = 30;
+    setSessionCoins((c) => c + waveCoins);
+    setCoins((c) => c + waveCoins);
     setWavesClearedCount((c) => c + 1);
-    
-    const newEntry = {
-      id: Date.now(),
-      wave: currentWave,
-      score,
-      coinsEarned: earnedCoins,
-      livesRemaining: lives,
-      status: 'Wave Cleared',
-      date: new Date().toLocaleDateString()
-    };
-
-    setGameHistory((prev) => [newEntry, ...prev]);
     
     // Automatically advance wave counter ready for next step
     setCurrentWave((w) => w + 1);
@@ -144,7 +136,6 @@ export default function App() {
 
   const handleNextWave = () => {
     setLevelCleared(false);
-    hasLoggedResultRef.current = false;
     setGameKey((prev) => prev + 1);
   };
 
@@ -259,7 +250,7 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 2: LEADERBOARD (Top 20 with Badges) */}
+        {/* VIEW 2: LEADERBOARD */}
         {activeView === 'leaderboard' && (
           <section style={fullScreenViewContainerStyle}>
             <div style={sectionEyebrowStyle}>GLOBAL RANKINGS</div>
@@ -293,7 +284,7 @@ export default function App() {
                       <span style={{ fontSize: '1.2rem', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{badge}</span>
                       <div>
                         <strong style={{ color: '#fff', fontSize: '1rem' }}>{entry.name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Cleared: {entry.waves || 1} • 🪙 {entry.coins || 0} coins</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Reached: {entry.waves || 1} • 🪙 {entry.coins || 0} coins</div>
                       </div>
                     </div>
                     <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>{entry.score.toLocaleString()} pts</span>
@@ -304,27 +295,27 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 3: HISTORY (Personal local session logs) */}
+        {/* VIEW 3: HISTORY (Session-based runs sorted by top scores) */}
         {activeView === 'history' && (
           <section style={cardViewContainerStyle}>
             <div style={sectionEyebrowStyle}>SESSION LOGS</div>
             <h2 style={sectionHeadingStyle}>My Game History</h2>
             <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
-              Your personal run history is securely saved locally on this browser.
+              Your top completed run sessions saved locally on this browser.
             </p>
             {gameHistory.length === 0 ? (
               <p style={{ color: '#94a3b8' }}>No matches recorded yet. Play an arcade session to log your runs!</p>
             ) : (
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
-                {gameHistory.map(h => (
-                  <div key={h.id} style={historyItemStyle} className="bb-card-hover">
+                {gameHistory.map((h, idx) => (
+                  <div key={h.id || idx} style={historyItemStyle} className="bb-card-hover">
                     <div>
-                      <strong style={{ color: '#38bdf8' }}>Wave {h.wave}</strong>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date} • Lives left: {h.livesRemaining}</div>
+                      <strong style={{ color: '#38bdf8' }}>Run #{idx + 1} (Max Wave {h.maxWave})</strong>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ color: h.status === 'Wave Cleared' ? '#34d399' : '#f43f5e', fontWeight: 'bold' }}>{h.status}</div>
-                      <span style={{ color: '#fbbf24', fontWeight: '800' }}>{h.score} pts (+{h.coinsEarned} 🪙)</span>
+                      <span style={{ color: '#fbbf24', fontWeight: '800', display: 'block' }}>{h.score} pts</span>
+                      <span style={{ fontSize: '0.78rem', color: '#34d399' }}>🪙 +{h.totalCoins} total coins</span>
                     </div>
                   </div>
                 ))}
@@ -386,7 +377,7 @@ export default function App() {
         )}
       </main>
 
-      {/* GAME OVER MODAL WITH NAVBAR LOGIN REDIRECT */}
+      {/* GAME OVER MODAL */}
       {gameOver && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
@@ -408,7 +399,7 @@ export default function App() {
         </div>
       )}
 
-      {/* WAVE CLEARED MODAL WITH BACK BUTTON & LOGIN REDIRECT */}
+      {/* WAVE CLEARED MODAL */}
       {levelCleared && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
@@ -490,7 +481,7 @@ const leaderboardTabBtnStyle = { flex: 1, padding: '10px', borderRadius: '12px',
 const leaderboardGridFullStyle = { display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxHeight: '420px', overflowY: 'auto' };
 const leaderboardRowStyle = { background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '16px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' };
 
-const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(13,33,51,0.85)', border: '1px solid rgba(56,189,248,0.15)', padding: '12px 16px', borderRadius: '12px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' };
+const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(13,33,51,0.85)', border: '1px solid rgba(56,189,248,0.15)', padding: '14px 18px', borderRadius: '14px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' };
 
 const loginCardStyle = { width: '100%', maxWidth: '420px', background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '24px', padding: '32px 26px', boxSizing: 'border-box' };
 const loginFormStyle = { display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '18px' };
