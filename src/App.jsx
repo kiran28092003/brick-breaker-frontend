@@ -25,13 +25,13 @@ export default function App() {
   // Leaderboard Filter Tabs: 'Global' | 'Monthly' | 'Weekly' | 'Everyday'
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State (Strictly empty by default, no hardcoded entries)
+  // Game History State
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Global High Scores for Leaderboard (Strictly empty by default, no hardcoded entries)
+  // Global High Scores for Leaderboard
   const [globalScores, setGlobalScores] = useState(() => {
     const saved = localStorage.getItem('bb_global_leaderboard');
     return saved ? JSON.parse(saved) : [];
@@ -152,7 +152,8 @@ export default function App() {
     setCoins((c) => c + waveCoins);
     setWavesClearedCount((c) => c + 1);
     
-    setCurrentWave((w) => w + 1);
+    // Correctly advance wave by 1 (e.g., Wave 1 -> Wave 2)
+    setCurrentWave((prevWave) => prevWave + 1);
     setLevelCleared(true);
   };
 
@@ -197,7 +198,6 @@ export default function App() {
     if (leaderboardTab === 'Everyday') {
       return globalScores.filter(item => item.date === today);
     }
-    // For weekly/monthly/global, return sorted scores
     return globalScores;
   };
 
@@ -284,7 +284,7 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 2: LEADERBOARD (Global, Monthly, Weekly, Everyday) */}
+        {/* VIEW 2: LEADERBOARD */}
         {activeView === 'leaderboard' && (
           <section style={fullScreenViewContainerStyle}>
             <div style={sectionEyebrowStyle}>RANKINGS</div>
