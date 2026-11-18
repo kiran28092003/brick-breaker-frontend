@@ -10,6 +10,7 @@ export default function App() {
   const [levelCleared, setLevelCleared] = useState(false);
 
   const [currentWave, setCurrentWave] = useState(1);
+  const [nextWaveTarget, setNextWaveTarget] = useState(2);
   const [totalScore, setTotalScore] = useState(0);
   const [sessionCoins, setSessionCoins] = useState(0);
   const [wavesClearedCount, setWavesClearedCount] = useState(0);
@@ -72,6 +73,7 @@ export default function App() {
 
   const handleStartGame = () => {
     setCurrentWave(1);
+    setNextWaveTarget(2);
     setGameOver(false);
     setLevelCleared(false);
     setLives(3);
@@ -152,8 +154,10 @@ export default function App() {
     setCoins((c) => c + waveCoins);
     setWavesClearedCount((c) => c + 1);
     
-    // Correctly advance wave by 1 (e.g., Wave 1 -> Wave 2)
-    setCurrentWave((prevWave) => prevWave + 1);
+    // Explicitly calculate next sequential wave target
+    const upcoming = currentWave + 1;
+    setNextWaveTarget(upcoming);
+    setCurrentWave(upcoming);
     setLevelCleared(true);
   };
 
@@ -468,7 +472,7 @@ export default function App() {
                 ← Back to Home
               </button>
               <button className="bb-tactile-btn" onClick={handleNextWave} style={{ ...gold3DButtonStyle, flex: 1, padding: '12px' }}>
-                Wave {currentWave} →
+                Wave {nextWaveTarget} →
               </button>
             </div>
           </div>
