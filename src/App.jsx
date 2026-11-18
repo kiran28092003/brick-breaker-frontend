@@ -217,6 +217,26 @@ export default function App() {
         .bb-tactile-btn:active { transform: translateY(2px); }
         .bb-card-hover { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
         .bb-card-hover:hover { transform: translateY(-4px); border-color: rgba(56, 189, 248, 0.7) !important; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25); }
+        
+        @keyframes floatOrb {
+          0%, 100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.6)); }
+          50% { transform: translateY(-12px) scale(1.03); filter: drop-shadow(0 0 45px rgba(168, 85, 247, 0.8)); }
+        }
+        @keyframes blinkEyes {
+          0%, 90%, 100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.1); }
+        }
+        .dynamic-mascot {
+          animation: floatOrb 4s ease-in-out infinite;
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          cursor: pointer;
+        }
+        .dynamic-mascot:hover {
+          transform: scale(1.1) rotate(5deg);
+        }
+        .mascot-eye {
+          animation: blinkEyes 3.5s infinite;
+        }
       `}</style>
 
       {/* Top Professional Navbar */}
@@ -279,9 +299,14 @@ export default function App() {
                 <div style={speechBubbleOverlayStyle}>
                   Clear all bricks to advance to the next wave!
                 </div>
-                <div style={mascotOrbFloatingStyle}>
-                  <div style={mascotEyesStyle}><span style={mascotEyeStyle}/><span style={mascotEyeStyle}/></div>
-                  <div style={mascotSmileStyle}/>
+                {/* Upgraded Dynamic Mascot Orb */}
+                <div className="dynamic-mascot" style={mascotOrbDynamicStyle} onClick={handleStartGame} title="Click to Play!">
+                  <div style={mascotEyesContainerStyle}>
+                    <div className="mascot-eye" style={mascotEyeEnhancedStyle}/>
+                    <div className="mascot-eye" style={mascotEyeEnhancedStyle}/>
+                  </div>
+                  <div style={mascotSmileEnhancedStyle}/>
+                  <div style={innerOrbGleamStyle}/>
                 </div>
               </div>
             </div>
@@ -516,12 +541,27 @@ const metricNumberStyle = { fontSize: '1.8rem', fontWeight: '900', color: '#ffff
 const metricLabelStyle = { fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.08em', color: '#94a3b8' };
 
 const heroRightIslandContainerStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' };
-const islandGraphicStyle = { position: 'relative', width: '380px', height: '380px', borderRadius: '50%', background: 'radial-gradient(circle, #0e7490 0%, #065f46 70%, #061320 100%)', border: '6px solid rgba(56,189,248,0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 60px rgba(14,116,144,0.4)' };
-const speechBubbleOverlayStyle = { position: 'absolute', bottom: '30px', background: '#fff', color: '#0f172a', padding: '12px 18px', borderRadius: '16px', fontSize: '0.85rem', fontWeight: '700', boxShadow: '0 10px 25px rgba(0,0,0,0.4)', textAlign: 'center', maxWidth: '220px' };
-const mascotOrbFloatingStyle = { width: '80px', height: '80px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #7dd3fc 0%, #0284c7 75%, #0369a1 100%)', border: '3px solid #fff', boxShadow: '0 10px 25px rgba(2,132,199,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', transform: 'translateY(-30px)' };
-const mascotEyesStyle = { display: 'flex', gap: '14px' };
-const mascotEyeStyle = { width: '8px', height: '10px', borderRadius: '50%', background: '#0f172a' };
-const mascotSmileStyle = { width: '18px', height: '9px', borderBottom: '3px solid #0f172a', borderRadius: '0 0 12px 12px' };
+const islandGraphicStyle = { position: 'relative', width: '380px', height: '380px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.4) 0%, rgba(6,95,70,0.2) 70%, transparent 100%)', border: '2px dashed rgba(56,189,248,0.25)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 0 50px rgba(56,189,248,0.1)' };
+const speechBubbleOverlayStyle = { position: 'absolute', bottom: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', color: '#0f172a', padding: '12px 20px', borderRadius: '16px', fontSize: '0.85rem', fontWeight: '800', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center', maxWidth: '240px', border: '1px solid rgba(56,189,248,0.4)' };
+
+const mascotOrbDynamicStyle = { 
+  position: 'relative',
+  width: '120px', 
+  height: '120px', 
+  borderRadius: '50%', 
+  background: 'radial-gradient(circle at 35% 35%, #38bdf8 0%, #0284c7 50%, #0369a1 85%, #0f172a 100%)', 
+  border: '3px solid rgba(255,255,255,0.9)', 
+  boxShadow: 'inset 0 -12px 20px rgba(0,0,0,0.5), inset 0 10px 15px rgba(255,255,255,0.6), 0 0 35px rgba(56,189,248,0.8)', 
+  display: 'flex', 
+  flexDirection: 'column', 
+  alignItems: 'center', 
+  justifyContent: 'center', 
+  gap: '8px' 
+};
+const mascotEyesContainerStyle = { display: 'flex', gap: '16px', marginTop: '4px' };
+const mascotEyeEnhancedStyle = { width: '10px', height: '14px', borderRadius: '50%', background: '#0f172a', boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.6)' };
+const mascotSmileEnhancedStyle = { width: '24px', height: '12px', borderBottom: '4px solid #0f172a', borderRadius: '0 0 16px 16px' };
+const innerOrbGleamStyle = { position: 'absolute', top: '15px', left: '22px', width: '28px', height: '14px', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', transform: 'rotate(-35deg)', filter: 'blur(1px)' };
 
 const cardViewContainerStyle = { width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
 const fullScreenViewContainerStyle = { width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
