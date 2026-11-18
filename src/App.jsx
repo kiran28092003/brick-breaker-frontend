@@ -3,8 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
 
 export default function App() {
+  // Navigation View State: 'home' | 'play' | 'leaderboard' | 'history' | 'login'
   const [activeView, setActiveView] = useState('home');
 
+  // Game & Progression State
   const [isPaused, setIsPaused] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
@@ -19,13 +21,28 @@ export default function App() {
   const [gameKey, setGameKey] = useState(0);
   const [activeBooster, setActiveBooster] = useState(null);
 
+  // Prevent duplicate history logging guard
   const hasLoggedResultRef = useRef(false);
+
+  // Leaderboard Tab State
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State (Rich details: wave, score, status, date, coins)
+  // Game History State (Personal local logs)
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
+  });
+
+  // Global High Scores for Leaderboard (Top 20)
+  const [globalScores, setGlobalScores] = useState(() => {
+    const saved = localStorage.getItem('bb_global_leaderboard');
+    return saved ? JSON.parse(saved) : [
+      { name: 'NeonStriker', score: 3450, coins: 172, waves: 12 },
+      { name: 'ArcadeMaster', score: 2890, coins: 144, waves: 10 },
+      { name: 'BrickDestroyer', score: 2150, coins: 107, waves: 8 },
+      { name: 'PixelKing', score: 1840, coins: 92, waves: 7 },
+      { name: 'CyberPaddle', score: 1420, coins: 71, waves: 5 },
+    ];
   });
 
   // User Auth State
@@ -34,25 +51,27 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [emailInput, setEmailInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Sound Persistence
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('brick_breaker_sound');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
 
   // Sync Stats to LocalStorage
   useEffect(() => {
     localStorage.setItem('bb_coins', coins);
     localStorage.setItem('bb_history', JSON.stringify(gameHistory));
-  }, [coins, gameHistory]);
+    localStorage.setItem('bb_global_leaderboard', JSON.stringify(globalScores));
+  }, [coins, gameHistory, globalScores]);
 
   const handleToggleSound = () => {
     const newState = !soundEnabled;
     setSoundEnabled(newState);
     localStorage.setItem('brick_breaker_sound', JSON.stringify(newState));
   };
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    const saved = localStorage.getItem('brick_breaker_sound');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
 
   const handleStartGame = () => {
     setCurrentWave(1);
@@ -74,10 +93,25 @@ export default function App() {
     const earnedCoins = Math.floor(score / 20);
     setCoins((c) => c + earnedCoins);
 
-    setGameHistory((prev) => [
-      { id: Date.now(), wave: currentWave, score, status: 'Defeat', coinsEarned: earnedCoins, date: new Date().toLocaleDateString() },
-      ...prev
-    ]);
+    const newEntry = {
+      id: Date.now(),
+      wave: currentWave,
+      score,
+      coinsEarned: earnedCoins,
+      livesRemaining: lives,
+      status: 'Game Over',
+      date: new Date().toLocaleDateString()
+    };
+
+    setGameHistory((prev) => [newEntry, ...prev]);
+
+    // Push to global leaderboard if user is logged in
+    const playerName = user ? user.name : 'Guest Player';
+    setGlobalScores((prev) => {
+      const updated = [...prev, { name: playerName, score, coins: earnedCoins, waves: currentWave }];
+      return updated.sort((a, b) => b.score - a.score).slice(0, 20); // Keep top 20
+    });
+
     setGameOver(true);
   };
 
@@ -91,12 +125,20 @@ export default function App() {
     setCoins((c) => c + earnedCoins);
     setWavesClearedCount((c) => c + 1);
     
-    setCurrentWave((w) => w + 1);
+    const newEntry = {
+      id: Date.now(),
+      wave: currentWave,
+      score,
+      coinsEarned: earnedCoins,
+      livesRemaining: lives,
+      status: 'Wave Cleared',
+      date: new Date().toLocaleDateString()
+    };
+
+    setGameHistory((prev) => [newEntry, ...prev]);
     
-    setGameHistory((prev) => [
-      { id: Date.now(), wave: currentWave, score, status: 'Wave Cleared', coinsEarned: earnedCoins, date: new Date().toLocaleDateString() },
-      ...prev
-    ]);
+    // Automatically advance wave counter ready for next step
+    setCurrentWave((w) => w + 1);
     setLevelCleared(true);
   };
 
@@ -122,24 +164,13 @@ export default function App() {
   const handleAuthSubmit = (e) => {
     e.preventDefault();
     if (!emailInput.trim() || passwordInput.length < 6) return;
-    const playerName = nameInput.trim() || emailInput.split('@')[0];
+    const playerName = emailInput.split('@')[0];
     const userData = { email: emailInput.trim(), name: playerName };
     setUser(userData);
     localStorage.setItem('bb_user', JSON.stringify(userData));
     setEmailInput('');
-    setNameInput('');
     setPasswordInput('');
     setActiveView('home');
-  };
-
-  const handleQuickClaimScore = (e) => {
-    e.preventDefault();
-    if (!emailInput.trim() || !nameInput.trim()) return;
-    const userData = { email: emailInput.trim(), name: nameInput.trim() };
-    setUser(userData);
-    localStorage.setItem('bb_user', JSON.stringify(userData));
-    setGameOver(false);
-    setActiveView('leaderboard');
   };
 
   const handleLogout = () => {
@@ -150,36 +181,13 @@ export default function App() {
   return (
     <div style={appContainerStyle}>
       <style>{`
-        .bb-nav-pill {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-        }
-        .bb-nav-pill:hover {
-          background: rgba(56, 189, 248, 0.2) !important;
-          color: #ffffff !important;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
-        }
-        .bb-tactile-btn {
-          transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease, box-shadow 0.15s ease;
-          cursor: pointer;
-        }
-        .bb-tactile-btn:hover {
-          transform: translateY(-4px);
-          filter: brightness(1.12);
-          box-shadow: 0 8px 25px rgba(245, 158, 11, 0.45);
-        }
-        .bb-tactile-btn:active {
-          transform: translateY(2px);
-        }
-        .bb-card-hover {
-          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .bb-card-hover:hover {
-          transform: translateY(-4px);
-          border-color: rgba(56, 189, 248, 0.7) !important;
-          box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25);
-        }
+        .bb-nav-pill { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .bb-nav-pill:hover { background: rgba(56, 189, 248, 0.2) !important; color: #ffffff !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25); }
+        .bb-tactile-btn { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease, box-shadow 0.15s ease; cursor: pointer; }
+        .bb-tactile-btn:hover { transform: translateY(-4px); filter: brightness(1.12); box-shadow: 0 8px 25px rgba(245, 158, 11, 0.45); }
+        .bb-tactile-btn:active { transform: translateY(2px); }
+        .bb-card-hover { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+        .bb-card-hover:hover { transform: translateY(-4px); border-color: rgba(56, 189, 248, 0.7) !important; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25); }
       `}</style>
 
       {/* Top Professional Navbar */}
@@ -233,7 +241,7 @@ export default function App() {
               <div style={metricsStripStyle}>
                 <div style={metricItemStyle}><span style={metricNumberStyle}>ENDLESS</span><span style={metricLabelStyle}>WAVES</span></div>
                 <div style={metricItemStyle}><span style={metricNumberStyle}>4</span><span style={metricLabelStyle}>POWER-UPS</span></div>
-                <div style={metricItemStyle}><span style={metricNumberStyle}>AUTO</span><span style={metricLabelStyle}>SAVED</span></div>
+                <div style={metricItemStyle}><span style={metricNumberStyle}>LIVE</span><span style={metricLabelStyle}>SCALING</span></div>
               </div>
             </div>
 
@@ -251,11 +259,11 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 2: LEADERBOARD */}
+        {/* VIEW 2: LEADERBOARD (Top 20 with Badges) */}
         {activeView === 'leaderboard' && (
           <section style={fullScreenViewContainerStyle}>
-            <div style={sectionEyebrowStyle}>TOP PLAYERS</div>
-            <h2 style={sectionHeadingStyle}>Leaderboard</h2>
+            <div style={sectionEyebrowStyle}>GLOBAL RANKINGS</div>
+            <h2 style={sectionHeadingStyle}>Leaderboard (Top 20)</h2>
             <div style={leaderboardTabsRowStyle}>
               {['Global', 'Weekly', 'Friends'].map((tab) => (
                 <button
@@ -273,50 +281,50 @@ export default function App() {
               ))}
             </div>
             <div style={leaderboardGridFullStyle}>
-              {user && (
-                <div style={leaderboardRowStyle} className="bb-card-hover">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <span style={{ fontSize: '1.4rem' }}>⭐</span>
-                    <div>
-                      <strong style={{ color: '#fff', fontSize: '1rem' }}>{user.name} (You)</strong>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Cleared: {wavesClearedCount}</div>
+              {globalScores.map((entry, index) => {
+                let badge = `#${index + 1}`;
+                if (index === 0) badge = '🥇';
+                else if (index === 1) badge = '🥈';
+                else if (index === 2) badge = '🥉';
+
+                return (
+                  <div key={index} style={leaderboardRowStyle} className="bb-card-hover">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{badge}</span>
+                      <div>
+                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{entry.name}</strong>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Cleared: {entry.waves || 1} • 🪙 {entry.coins || 0} coins</div>
+                      </div>
                     </div>
+                    <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>{entry.score.toLocaleString()} pts</span>
                   </div>
-                  <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>{totalScore.toLocaleString()} pts</span>
-                </div>
-              )}
-              <div style={leaderboardRowStyle} className="bb-card-hover">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <span style={{ fontSize: '1.4rem' }}>🥇</span>
-                  <div>
-                    <strong style={{ color: '#fff', fontSize: '1rem' }}>ArcadeMaster</strong>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Cleared: 15</div>
-                  </div>
-                </div>
-                <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>4,250 pts</span>
-              </div>
+                );
+              })}
             </div>
           </section>
         )}
 
-        {/* VIEW 3: HISTORY (Detailed Logs) */}
+        {/* VIEW 3: HISTORY (Personal local session logs) */}
         {activeView === 'history' && (
           <section style={cardViewContainerStyle}>
             <div style={sectionEyebrowStyle}>SESSION LOGS</div>
-            <h2 style={sectionHeadingStyle}>Game History</h2>
+            <h2 style={sectionHeadingStyle}>My Game History</h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
+              Your personal run history is securely saved locally on this browser.
+            </p>
             {gameHistory.length === 0 ? (
               <p style={{ color: '#94a3b8' }}>No matches recorded yet. Play an arcade session to log your runs!</p>
             ) : (
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
                 {gameHistory.map(h => (
                   <div key={h.id} style={historyItemStyle} className="bb-card-hover">
                     <div>
                       <strong style={{ color: '#38bdf8' }}>Wave {h.wave}</strong>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date} • +{h.coinsEarned || 0} 🪙 earned</div>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date} • Lives left: {h.livesRemaining}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ color: h.status === 'Wave Cleared' ? '#34d399' : '#f43f5e', fontWeight: 'bold' }}>{h.status}</div>
-                      <span style={{ color: '#fbbf24', fontWeight: '800' }}>{h.score} pts</span>
+                      <span style={{ color: '#fbbf24', fontWeight: '800' }}>{h.score} pts (+{h.coinsEarned} 🪙)</span>
                     </div>
                   </div>
                 ))}
@@ -337,7 +345,6 @@ export default function App() {
               </div>
             ) : (
               <form onSubmit={handleAuthSubmit} style={loginFormStyle}>
-                <input type="text" placeholder="Your Name" value={nameInput} onChange={e => setNameInput(e.target.value)} style={loginInputStyle} required />
                 <input type="email" placeholder="Email address" value={emailInput} onChange={e => setEmailInput(e.target.value)} style={loginInputStyle} required />
                 <input type="password" placeholder="Password (6+ characters)" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} minLength={6} style={loginInputStyle} required />
                 <button type="submit" className="bb-tactile-btn" style={{ ...gold3DButtonStyle, width: '100%', marginTop: '6px' }}>{isSignUp ? 'Sign Up' : 'Log In'}</button>
@@ -347,7 +354,7 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 5: GAMEPLAY */}
+        {/* VIEW 5: GAMEPLAY PLAYGROUND */}
         {activeView === 'play' && (
           <div style={gameplayWrapperStyle}>
             <div style={gameTopControlsStyle}>
@@ -379,7 +386,7 @@ export default function App() {
         )}
       </main>
 
-      {/* GAME OVER MODAL (With optional Name & Email Prompt if not logged in) */}
+      {/* GAME OVER MODAL WITH NAVBAR LOGIN REDIRECT */}
       {gameOver && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
@@ -387,34 +394,42 @@ export default function App() {
             <p>Final Score: {finalScore}</p>
             <p style={{ color: '#fbbf24', fontSize: '0.85rem', marginBottom: '16px' }}>🪙 Coins & Session Saved Locally!</p>
             
-            {!user ? (
-              <form onSubmit={handleQuickClaimScore} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                <input type="text" placeholder="Enter your name" value={nameInput} onChange={e => setNameInput(e.target.value)} style={loginInputStyle} required />
-                <input type="email" placeholder="Enter email to save score" value={emailInput} onChange={e => setEmailInput(e.target.value)} style={loginInputStyle} required />
-                <button type="submit" className="bb-tactile-btn" style={{ ...glassSecondaryButtonStyle, width: '100%', padding: '10px' }}>Save Score & View Leaderboard</button>
-              </form>
-            ) : null}
+            {!user && (
+              <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '10px', borderRadius: '12px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '8px' }}>Want to sync your profile globally?</p>
+                <button className="bb-tactile-btn" onClick={() => { setGameOver(false); setActiveView('login'); }} style={{ ...glassSecondaryButtonStyle, width: '100%', padding: '10px', fontSize: '0.85rem' }}>
+                  👤 Log In / Register in Navbar
+                </button>
+              </div>
+            )}
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="bb-tactile-btn" onClick={handleRestart} style={{ ...gold3DButtonStyle, flex: 1 }}>Play Again</button>
-              <button className="bb-tactile-btn" onClick={() => setActiveView('home')} style={{ ...glassSecondaryButtonStyle, flex: 1 }}>Home</button>
-            </div>
+            <button className="bb-tactile-btn" onClick={handleRestart} style={gold3DButtonStyle}>Play Again</button>
           </div>
         </div>
       )}
 
-      {/* WAVE CLEARED MODAL (With Back/Home Option + Proceed Option) */}
+      {/* WAVE CLEARED MODAL WITH BACK BUTTON & LOGIN REDIRECT */}
       {levelCleared && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
             <h2>Wave Cleared!</h2>
             <p>Score: {finalScore} • +30 Coins Earned</p>
+            
+            {!user && (
+              <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '10px', borderRadius: '12px', margin: '14px 0' }}>
+                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '8px' }}>Save your streak & scores under your profile:</p>
+                <button className="bb-tactile-btn" onClick={() => { setLevelCleared(false); setActiveView('login'); }} style={{ ...glassSecondaryButtonStyle, width: '100%', padding: '10px', fontSize: '0.85rem' }}>
+                  👤 Log In / Register in Navbar
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <button className="bb-tactile-btn" onClick={handleNextWave} style={{ ...gold3DButtonStyle, flex: 1 }}>
-                Proceed to Wave {currentWave} →
+              <button className="bb-tactile-btn" onClick={() => { setLevelCleared(false); setActiveView('home'); }} style={{ ...glassSecondaryButtonStyle, flex: 1, padding: '12px' }}>
+                ← Back to Home
               </button>
-              <button className="bb-tactile-btn" onClick={() => setActiveView('home')} style={{ ...glassSecondaryButtonStyle, flex: 1 }}>
-                Home / Exit
+              <button className="bb-tactile-btn" onClick={handleNextWave} style={{ ...gold3DButtonStyle, flex: 1, padding: '12px' }}>
+                Wave {currentWave} →
               </button>
             </div>
           </div>
@@ -449,8 +464,8 @@ const heroGradientTextStyle = { background: 'linear-gradient(90deg, #34d399 0%, 
 const heroDescriptionStyle = { color: '#cbd5e1', fontSize: '1.1rem', lineHeight: '1.6', margin: '0 0 32px 0', maxWidth: '480px' };
 const heroButtonRowStyle = { display: 'flex', gap: '16px', width: '100%', maxWidth: '480px', marginBottom: '40px' };
 
-const gold3DButtonStyle = { flex: 1, background: 'linear-gradient(180deg, #fde047 0%, #f59e0b 100%)', color: '#0f172a', border: 'none', borderRadius: '16px', padding: '14px 20px', fontSize: '1rem', fontWeight: '800', boxShadow: '0 6px 0 #b45309, 0 14px 28px rgba(245, 158, 11, 0.35)' };
-const glassSecondaryButtonStyle = { flex: 1, background: 'rgba(15, 41, 61, 0.75)', color: '#ffffff', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '16px', padding: '14px 20px', fontSize: '1rem', fontWeight: '700' };
+const gold3DButtonStyle = { flex: 1, background: 'linear-gradient(180deg, #fde047 0%, #f59e0b 100%)', color: '#0f172a', border: 'none', borderRadius: '16px', padding: '16px 24px', fontSize: '1.05rem', fontWeight: '800', boxShadow: '0 6px 0 #b45309, 0 14px 28px rgba(245, 158, 11, 0.35)' };
+const glassSecondaryButtonStyle = { flex: 1, background: 'rgba(15, 41, 61, 0.75)', color: '#ffffff', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '16px', padding: '16px 24px', fontSize: '1.05rem', fontWeight: '700' };
 
 const metricsStripStyle = { display: 'flex', gap: '48px' };
 const metricItemStyle = { display: 'flex', flexDirection: 'column' };
@@ -465,21 +480,21 @@ const mascotEyesStyle = { display: 'flex', gap: '14px' };
 const mascotEyeStyle = { width: '8px', height: '10px', borderRadius: '50%', background: '#0f172a' };
 const mascotSmileStyle = { width: '18px', height: '9px', borderBottom: '3px solid #0f172a', borderRadius: '0 0 12px 12px' };
 
-const cardViewContainerStyle = { width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
+const cardViewContainerStyle = { width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
 const fullScreenViewContainerStyle = { width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
 const sectionEyebrowStyle = { color: '#fbbf24', fontSize: '0.72rem', fontWeight: '800', letterSpacing: '0.12em', marginBottom: '6px' };
 const sectionHeadingStyle = { fontSize: '2rem', fontWeight: '900', margin: '0 0 10px 0', color: '#ffffff' };
 
 const leaderboardTabsRowStyle = { display: 'flex', gap: '8px', marginBottom: '16px', width: '100%' };
 const leaderboardTabBtnStyle = { flex: 1, padding: '10px', borderRadius: '12px', border: 'none', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' };
-const leaderboardGridFullStyle = { display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' };
-const leaderboardRowStyle = { background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '16px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' };
+const leaderboardGridFullStyle = { display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxHeight: '420px', overflowY: 'auto' };
+const leaderboardRowStyle = { background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '16px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' };
 
 const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(13,33,51,0.85)', border: '1px solid rgba(56,189,248,0.15)', padding: '12px 16px', borderRadius: '12px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' };
 
 const loginCardStyle = { width: '100%', maxWidth: '420px', background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '24px', padding: '32px 26px', boxSizing: 'border-box' };
 const loginFormStyle = { display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '18px' };
-const loginInputStyle = { width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.25)', background: '#071726', color: '#ffffff', fontSize: '0.9rem', boxSizing: 'border-box', outline: 'none' };
+const loginInputStyle = { width: '100%', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(56, 189, 248, 0.25)', background: '#071726', color: '#ffffff', fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none' };
 const textLinkButtonStyle = { background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', marginTop: '6px' };
 
 const gameplayWrapperStyle = { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' };
@@ -491,4 +506,4 @@ const boosterPillStyle = { flex: 1, background: 'rgba(13, 33, 51, 0.85)', border
 const costStyle = { fontSize: '0.72rem', color: '#fbbf24', fontWeight: '800' };
 
 const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
-const modalCardStyle = { background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', padding: '28px', borderRadius: '24px', textAlign: 'center', color: '#fff', width: '90%', maxWidth: '400px', border: '1px solid rgba(56,189,248,0.4)', boxSizing: 'border-box' };
+const modalCardStyle = { background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', padding: '30px', borderRadius: '24px', textAlign: 'center', color: '#fff', width: '90%', maxWidth: '400px', border: '1px solid rgba(56,189,248,0.4)' };
