@@ -3,17 +3,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
 
 export default function App() {
-  // Navigation View State: 'home' | 'play' | 'leaderboard' | 'history' | 'login'
   const [activeView, setActiveView] = useState('home');
 
-  // Game & Progression State
   const [isPaused, setIsPaused] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [levelCleared, setLevelCleared] = useState(false);
 
   const [currentWave, setCurrentWave] = useState(1);
   const [totalScore, setTotalScore] = useState(0);
-  const [sessionCoins, setSessionCoins] = useState(0); // Coins earned in current session run
+  const [sessionCoins, setSessionCoins] = useState(0);
   const [wavesClearedCount, setWavesClearedCount] = useState(0);
 
   const [finalScore, setFinalScore] = useState(0);
@@ -22,28 +20,20 @@ export default function App() {
   const [gameKey, setGameKey] = useState(0);
   const [activeBooster, setActiveBooster] = useState(null);
 
-  // Prevent duplicate game over logging guard
   const hasLoggedResultRef = useRef(false);
 
-  // Leaderboard Tab State
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State (Session-based runs sorted by top scores)
+  // Game History State (Starts completely empty if nothing played)
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Global High Scores for Leaderboard (Top 20)
+  // Global High Scores for Leaderboard (Starts empty or with clean valid data)
   const [globalScores, setGlobalScores] = useState(() => {
     const saved = localStorage.getItem('bb_global_leaderboard');
-    return saved ? JSON.parse(saved) : [
-      { name: 'NeonStriker', score: 3450, coins: 172, waves: 12 },
-      { name: 'ArcadeMaster', score: 2890, coins: 144, waves: 10 },
-      { name: 'BrickDestroyer', score: 2150, coins: 107, waves: 8 },
-      { name: 'PixelKing', score: 1840, coins: 92, waves: 7 },
-      { name: 'CyberPaddle', score: 1420, coins: 71, waves: 5 },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   // User Auth State
@@ -61,7 +51,6 @@ export default function App() {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  // Sync Stats to LocalStorage
   useEffect(() => {
     localStorage.setItem('bb_coins', coins);
     localStorage.setItem('bb_history', JSON.stringify(gameHistory));
@@ -105,16 +94,27 @@ export default function App() {
       date: new Date().toLocaleDateString()
     };
 
-    // Add and sort history by top scores descending
     setGameHistory((prev) => {
       const updated = [sessionEntry, ...prev];
       return updated.sort((a, b) => b.score - a.score);
     });
 
-    // Push to global leaderboard if applicable
+    // Use logged-in username or fallback to Guest
     const playerName = user ? user.name : 'Guest Player';
+    
     setGlobalScores((prev) => {
-      const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: currentWave }];
+      const existingIndex = prev.findIndex(item => item.name === playerName);
+      let updated = [...prev];
+      
+      if (existingIndex >= 0) {
+        // Update if new score is higher than their previous best
+        if (score > updated[existingIndex].score) {
+          updated[existingIndex] = { name: playerName, score, coins: totalRunCoins, waves: currentWave };
+        }
+      } else {
+        updated.push({ name: playerName, score, coins: totalRunCoins, waves: currentWave });
+      }
+
       return updated.sort((a, b) => b.score - a.score).slice(0, 20);
     });
 
@@ -129,7 +129,6 @@ export default function App() {
     setCoins((c) => c + waveCoins);
     setWavesClearedCount((c) => c + 1);
     
-    // Automatically advance wave counter ready for next step
     setCurrentWave((w) => w + 1);
     setLevelCleared(true);
   };
@@ -271,31 +270,38 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div style={leaderboardGridFullStyle}>
-              {globalScores.map((entry, index) => {
-                let badge = `#${index + 1}`;
-                if (index === 0) badge = '🥇';
-                else if (index === 1) badge = '🥈';
-                else if (index === 2) badge = '🥉';
+            
+            {globalScores.length === 0 ? (
+              <div style={{ padding: '40px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
+                <p>No scores on the leaderboard yet. Be the first to play and set a high score!</p>
+              </div>
+            ) : (
+              <div style={leaderboardGridFullStyle}>
+                {globalScores.map((entry, index) => {
+                  let badge = `#${index + 1}`;
+                  if (index === 0) badge = '🥇';
+                  else if (index === 1) badge = '🥈';
+                  else if (index === 2) badge = '🥉';
 
-                return (
-                  <div key={index} style={leaderboardRowStyle} className="bb-card-hover">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <span style={{ fontSize: '1.2rem', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{badge}</span>
-                      <div>
-                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{entry.name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Reached: {entry.waves || 1} • 🪙 {entry.coins || 0} coins</div>
+                  return (
+                    <div key={index} style={leaderboardRowStyle} className="bb-card-hover">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{badge}</span>
+                        <div>
+                          <strong style={{ color: '#fff', fontSize: '1rem' }}>{entry.name}</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Waves Reached: {entry.waves || 1} • 🪙 {entry.coins || 0} coins</div>
+                        </div>
                       </div>
+                      <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>{entry.score.toLocaleString()} pts</span>
                     </div>
-                    <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '1.1rem' }}>{entry.score.toLocaleString()} pts</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 
-        {/* VIEW 3: HISTORY (Session-based runs sorted by top scores) */}
+        {/* VIEW 3: HISTORY */}
         {activeView === 'history' && (
           <section style={cardViewContainerStyle}>
             <div style={sectionEyebrowStyle}>SESSION LOGS</div>
@@ -304,18 +310,20 @@ export default function App() {
               Your top completed run sessions saved locally on this browser.
             </p>
             {gameHistory.length === 0 ? (
-              <p style={{ color: '#94a3b8' }}>No matches recorded yet. Play an arcade session to log your runs!</p>
+              <div style={{ padding: '30px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
+                <p>No matches recorded yet. Play an arcade session to log your runs!</p>
+              </div>
             ) : (
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
                 {gameHistory.map((h, idx) => (
                   <div key={h.id || idx} style={historyItemStyle} className="bb-card-hover">
                     <div>
-                      <strong style={{ color: '#38bdf8' }}>Run #{idx + 1} (Max Wave {h.maxWave})</strong>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date}</div>
+                      <strong style={{ color: '#38bdf8' }}>Run #{idx + 1} (Max Wave {h.maxWave || 1})</strong>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date || 'Today'}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <span style={{ color: '#fbbf24', fontWeight: '800', display: 'block' }}>{h.score} pts</span>
-                      <span style={{ fontSize: '0.78rem', color: '#34d399' }}>🪙 +{h.totalCoins} total coins</span>
+                      <span style={{ color: '#fbbf24', fontWeight: '800', display: 'block' }}>{h.score || 0} pts</span>
+                      <span style={{ fontSize: '0.78rem', color: '#34d399' }}>🪙 +{h.totalCoins || 0} total coins</span>
                     </div>
                   </div>
                 ))}
