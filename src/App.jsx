@@ -24,13 +24,13 @@ export default function App() {
 
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State (Starts completely empty if nothing played)
+  // Game History State
   const [gameHistory, setGameHistory] = useState(() => {
     const saved = localStorage.getItem('bb_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Global High Scores for Leaderboard (Starts empty or with clean valid data)
+  // Global High Scores for Leaderboard (Top 20)
   const [globalScores, setGlobalScores] = useState(() => {
     const saved = localStorage.getItem('bb_global_leaderboard');
     return saved ? JSON.parse(saved) : [];
@@ -42,8 +42,14 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [emailInput, setEmailInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Game Over Score Submission Form State (for guests)
+  const [gameOverNameInput, setGameOverNameInput] = useState('');
+  const [gameOverEmailInput, setGameOverEmailInput] = useState('');
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
   // Sound Persistence
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -72,6 +78,9 @@ export default function App() {
     setSessionCoins(0);
     setWavesClearedCount(0);
     setIsPaused(false);
+    setScoreSubmitted(false);
+    setGameOverNameInput('');
+    setGameOverEmailInput('');
     hasLoggedResultRef.current = false;
     setGameKey((prev) => prev + 1);
     setActiveView('play');
@@ -86,9 +95,21 @@ export default function App() {
     const totalRunCoins = sessionCoins + endRunCoins;
     setCoins((c) => c + endRunCoins);
 
+    // If user is already logged in, automatically save and submit score
+    if (user) {
+      saveAndPublishScore(user.name, user.email, score, totalRunCoins, currentWave);
+      setScoreSubmitted(true);
+    }
+
+    setGameOver(true);
+  };
+
+  const saveAndPublishScore = (playerName, playerEmail, score, totalRunCoins, maxWave) => {
     const sessionEntry = {
       id: Date.now(),
-      maxWave: currentWave,
+      playerName,
+      playerEmail,
+      maxWave,
       score,
       totalCoins: totalRunCoins,
       date: new Date().toLocaleDateString()
@@ -99,26 +120,28 @@ export default function App() {
       return updated.sort((a, b) => b.score - a.score);
     });
 
-    // Use logged-in username or fallback to Guest
-    const playerName = user ? user.name : 'Guest Player';
-    
     setGlobalScores((prev) => {
-      const existingIndex = prev.findIndex(item => item.name === playerName);
-      let updated = [...prev];
-      
-      if (existingIndex >= 0) {
-        // Update if new score is higher than their previous best
-        if (score > updated[existingIndex].score) {
-          updated[existingIndex] = { name: playerName, score, coins: totalRunCoins, waves: currentWave };
-        }
-      } else {
-        updated.push({ name: playerName, score, coins: totalRunCoins, waves: currentWave });
-      }
-
-      return updated.sort((a, b) => b.score - a.score).slice(0, 20);
+      const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: maxWave }];
+      return updated.sort((a, b) => b.score - a.score).slice(0, 20); // Top 20 high scores
     });
+  };
 
-    setGameOver(true);
+  const handleGameOverScoreSubmit = (e) => {
+    e.preventDefault();
+    if (!gameOverNameInput.trim() || !gameOverEmailInput.trim()) return;
+
+    const playerName = gameOverNameInput.trim();
+    const playerEmail = gameOverEmailInput.trim();
+    const endRunCoins = Math.floor(finalScore / 20);
+    const totalRunCoins = sessionCoins + endRunCoins;
+
+    // Save user to session if not logged in
+    const userData = { email: playerEmail, name: playerName };
+    setUser(userData);
+    localStorage.setItem('bb_user', JSON.stringify(userData));
+
+    saveAndPublishScore(playerName, playerEmail, finalScore, totalRunCoins, currentWave);
+    setScoreSubmitted(true);
   };
 
   const handleWaveClear = (score) => {
@@ -153,12 +176,12 @@ export default function App() {
 
   const handleAuthSubmit = (e) => {
     e.preventDefault();
-    if (!emailInput.trim() || passwordInput.length < 6) return;
-    const playerName = emailInput.split('@')[0];
-    const userData = { email: emailInput.trim(), name: playerName };
+    if (!emailInput.trim() || !nameInput.trim() || passwordInput.length < 6) return;
+    const userData = { email: emailInput.trim(), name: nameInput.trim() };
     setUser(userData);
     localStorage.setItem('bb_user', JSON.stringify(userData));
     setEmailInput('');
+    setNameInput('');
     setPasswordInput('');
     setActiveView('home');
   };
@@ -318,7 +341,7 @@ export default function App() {
                 {gameHistory.map((h, idx) => (
                   <div key={h.id || idx} style={historyItemStyle} className="bb-card-hover">
                     <div>
-                      <strong style={{ color: '#38bdf8' }}>Run #{idx + 1} (Max Wave {h.maxWave || 1})</strong>
+                      <strong style={{ color: '#38bdf8' }}>{h.playerName || 'Player'} (Max Wave {h.maxWave || 1})</strong>
                       <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date || 'Today'}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -344,6 +367,7 @@ export default function App() {
               </div>
             ) : (
               <form onSubmit={handleAuthSubmit} style={loginFormStyle}>
+                <input type="text" placeholder="Your Name" value={nameInput} onChange={e => setNameInput(e.target.value)} style={loginInputStyle} required />
                 <input type="email" placeholder="Email address" value={emailInput} onChange={e => setEmailInput(e.target.value)} style={loginInputStyle} required />
                 <input type="password" placeholder="Password (6+ characters)" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} minLength={6} style={loginInputStyle} required />
                 <button type="submit" className="bb-tactile-btn" style={{ ...gold3DButtonStyle, width: '100%', marginTop: '6px' }}>{isSignUp ? 'Sign Up' : 'Log In'}</button>
@@ -385,24 +409,30 @@ export default function App() {
         )}
       </main>
 
-      {/* GAME OVER MODAL */}
+      {/* GAME OVER MODAL WITH NAME & EMAIL PROMPT */}
       {gameOver && (
         <div style={modalOverlayStyle}>
           <div style={modalCardStyle} className="bb-card-hover">
             <h2>Game Over</h2>
-            <p>Final Score: {finalScore}</p>
-            <p style={{ color: '#fbbf24', fontSize: '0.85rem', marginBottom: '16px' }}>🪙 Coins & Session Saved Locally!</p>
-            
-            {!user && (
-              <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '10px', borderRadius: '12px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '8px' }}>Want to sync your profile globally?</p>
-                <button className="bb-tactile-btn" onClick={() => { setGameOver(false); setActiveView('login'); }} style={{ ...glassSecondaryButtonStyle, width: '100%', padding: '10px', fontSize: '0.85rem' }}>
-                  👤 Log In / Register in Navbar
+            <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#38bdf8', margin: '6px 0' }}>Final Score: {finalScore}</p>
+            <p style={{ color: '#fbbf24', fontSize: '0.85rem', marginBottom: '16px' }}>🪙 Coins earned for this run!</p>
+
+            {!user && !scoreSubmitted ? (
+              <form onSubmit={handleGameOverScoreSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', textAlign: 'left' }}>
+                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '2px' }}>Enter your name & email to save score to Leaderboard & History:</p>
+                <input type="text" placeholder="Your Name" value={gameOverNameInput} onChange={e => setGameOverNameInput(e.target.value)} style={loginInputStyle} required />
+                <input type="email" placeholder="Email Address" value={gameOverEmailInput} onChange={e => setGameOverEmailInput(e.target.value)} style={loginInputStyle} required />
+                <button type="submit" className="bb-tactile-btn" style={{ ...gold3DButtonStyle, width: '100%', padding: '12px', fontSize: '0.9rem', marginTop: '4px' }}>
+                  Save & Submit Score
                 </button>
+              </form>
+            ) : (
+              <div style={{ background: 'rgba(52, 211, 153, 0.1)', padding: '10px', borderRadius: '12px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 'bold' }}>✓ Score successfully saved & synced!</p>
               </div>
             )}
 
-            <button className="bb-tactile-btn" onClick={handleRestart} style={gold3DButtonStyle}>Play Again</button>
+            <button className="bb-tactile-btn" onClick={handleRestart} style={{ ...gold3DButtonStyle, width: '100%' }}>Play Again</button>
           </div>
         </div>
       )}
@@ -414,16 +444,7 @@ export default function App() {
             <h2>Wave Cleared!</h2>
             <p>Score: {finalScore} • +30 Coins Earned</p>
             
-            {!user && (
-              <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '10px', borderRadius: '12px', margin: '14px 0' }}>
-                <p style={{ fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '8px' }}>Save your streak & scores under your profile:</p>
-                <button className="bb-tactile-btn" onClick={() => { setLevelCleared(false); setActiveView('login'); }} style={{ ...glassSecondaryButtonStyle, width: '100%', padding: '10px', fontSize: '0.85rem' }}>
-                  👤 Log In / Register in Navbar
-                </button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button className="bb-tactile-btn" onClick={() => { setLevelCleared(false); setActiveView('home'); }} style={{ ...glassSecondaryButtonStyle, flex: 1, padding: '12px' }}>
                 ← Back to Home
               </button>
