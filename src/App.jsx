@@ -1,9 +1,28 @@
 // frontend/src/App.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GameCanvas from './components/GameCanvas';
+
+const API_BASE_URL = 'https://brick-breaker-backend-r7bd.onrender.com';
+const SCORES_ENDPOINT = `${API_BASE_URL}/api/scores`;
 
 const getHistoryStorageKey = (email) =>
   email ? `bb_history_${email.trim().toLowerCase()}` : null;
+
+const normalizeScoreEntry = (entry) => {
+  const rawDate = entry.createdAt || entry.date || new Date().toISOString();
+  const parsedDate = new Date(rawDate);
+  const validDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+
+  return {
+    id: entry._id || entry.id || `${Date.now()}-${Math.random()}`,
+    name: (entry.playerName || entry.name || 'Anonymous').trim(),
+    score: Number(entry.score) || 0,
+    coins: Number(entry.coins ?? entry.totalCoins) || 0,
+    waves: Number(entry.waves ?? entry.maxWave) || 1,
+    createdAt: validDate.toISOString(),
+    dateLabel: validDate.toLocaleDateString()
+  };
+};
 
 export default function App() {
   const [activeView, setActiveView] = useState('home');
@@ -28,6 +47,7 @@ export default function App() {
 
   // Leaderboard Filter Tabs: 'Global' | 'Monthly' | 'Weekly' | 'Everyday'
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
 
   // User Auth State
   const [user, setUser] = useState(() => {
@@ -50,10 +70,15 @@ export default function App() {
     }
   });
 
-  // Global High Scores for Leaderboard
+  // Global High Scores for Leaderboard (synced with backend + local cache)
   const [globalScores, setGlobalScores] = useState(() => {
     const saved = localStorage.getItem('bb_global_leaderboard');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved).map(normalizeScoreEntry);
+    } catch {
+      return [];
+    }
   });
 
   const [emailInput, setEmailInput] = useState('');
@@ -72,6 +97,39 @@ export default function App() {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  // Fetch shared leaderboard scores from Render + MongoDB backend
+  const fetchLeaderboardFromBackend = useCallback(async () => {
+    setIsLoadingLeaderboard(true);
+    try {
+      const response = await fetch(SCORES_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const data = await response.json();
+      const list = Array.isArray(data) ? data : Array.isArray(data?.scores) ? data.scores : [];
+      const normalized = list
+        .map(normalizeScoreEntry)
+        .sort((a, b) => b.score - a.score);
+      setGlobalScores(normalized);
+      localStorage.setItem('bb_global_leaderboard', JSON.stringify(normalized));
+    } catch (error) {
+      console.error('Failed to fetch leaderboard from backend:', error);
+    } finally {
+      setIsLoadingLeaderboard(false);
+    }
+  }, []);
+
+  // Load leaderboard on initial mount and whenever user opens Leaderboard view
+  useEffect(() => {
+    fetchLeaderboardFromBackend();
+  }, [fetchLeaderboardFromBackend]);
+
+  useEffect(() => {
+    if (activeView === 'leaderboard') {
+      fetchLeaderboardFromBackend();
+    }
+  }, [activeView, leaderboardTab, fetchLeaderboardFromBackend]);
+
   // Load the logged-in user's private history whenever `user` changes
   useEffect(() => {
     const key = getHistoryStorageKey(user?.email);
@@ -83,7 +141,7 @@ export default function App() {
     setGameHistory(saved ? JSON.parse(saved) : []);
   }, [user]);
 
-  // Persist coins & leaderboard; persist history ONLY to the logged-in user's key
+  // Persist coins & leaderboard cache; persist history ONLY to the logged-in user's key
   useEffect(() => {
     localStorage.setItem('bb_coins', coins);
     localStorage.setItem('bb_global_leaderboard', JSON.stringify(globalScores));
@@ -118,19 +176,24 @@ export default function App() {
     setActiveView('play');
   };
 
-  const saveAndPublishScore = (playerName, playerEmail, score, totalRunCoins, maxWave, shouldSaveHistory = true) => {
-    const todayStr = new Date().toLocaleDateString();
+  const saveAndPublishScore = async (playerName, playerEmail, score, totalRunCoins, maxWave, shouldSaveHistory = true) => {
+    const now = new Date();
+    const todayStr = now.toLocaleDateString();
+    const cleanName = (playerName || 'Anonymous').trim();
+    const numericScore = Number(score) || 0;
+
     const sessionEntry = {
       id: Date.now(),
-      playerName,
+      playerName: cleanName,
       playerEmail,
       maxWave,
-      score,
+      score: numericScore,
       totalCoins: totalRunCoins,
-      date: todayStr
+      date: todayStr,
+      createdAt: now.toISOString()
     };
 
-    // Only save history when a user is logged in
+    // Only save private history when a user is logged in
     if (shouldSaveHistory && playerEmail) {
       const userKey = getHistoryStorageKey(playerEmail);
       setGameHistory((prev) => {
@@ -142,10 +205,43 @@ export default function App() {
       });
     }
 
-    setGlobalScores((prev) => {
-      const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: maxWave, date: todayStr }];
-      return updated.sort((a, b) => b.score - a.score).slice(0, 20);
+    // Optimistically update local leaderboard state
+    const optimisticEntry = normalizeScoreEntry({
+      name: cleanName,
+      playerName: cleanName,
+      score: numericScore,
+      coins: totalRunCoins,
+      waves: maxWave,
+      createdAt: now.toISOString()
     });
+
+    setGlobalScores((prev) => {
+      const updated = [...prev, optimisticEntry]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 20);
+      return updated;
+    });
+
+    // POST score to Render + MongoDB backend so all devices see it
+    try {
+      const response = await fetch(SCORES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerName: cleanName,
+          name: cleanName,
+          score: numericScore,
+          coins: totalRunCoins,
+          waves: maxWave
+        })
+      });
+
+      if (response.ok) {
+        await fetchLeaderboardFromBackend();
+      }
+    } catch (error) {
+      console.error('Failed to submit score to backend:', error);
+    }
   };
 
   const handleGameOver = (score) => {
@@ -234,11 +330,26 @@ export default function App() {
 
   // Filter Leaderboard based on selected tab
   const getFilteredLeaderboard = () => {
-    const today = new Date().toLocaleDateString();
-    if (leaderboardTab === 'Everyday') {
-      return globalScores.filter(item => item.date === today);
-    }
-    return globalScores;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    return globalScores.filter((item) => {
+      const entryDate = new Date(item.createdAt || item.date || now);
+      if (Number.isNaN(entryDate.getTime())) return true;
+
+      if (leaderboardTab === 'Everyday') {
+        return entryDate >= startOfToday;
+      }
+      if (leaderboardTab === 'Weekly') {
+        return entryDate >= sevenDaysAgo;
+      }
+      if (leaderboardTab === 'Monthly') {
+        return entryDate >= startOfMonth;
+      }
+      return true; // 'Global' (all-time)
+    });
   };
 
   const displayedScores = getFilteredLeaderboard();
@@ -370,7 +481,11 @@ export default function App() {
               ))}
             </div>
 
-            {displayedScores.length === 0 ? (
+            {isLoadingLeaderboard && displayedScores.length === 0 ? (
+              <div style={{ padding: '40px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
+                <p>Syncing scores with leaderboard...</p>
+              </div>
+            ) : displayedScores.length === 0 ? (
               <div style={{ padding: '40px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
                 <p>No scores for {leaderboardTab} yet. Play a game to set a record!</p>
               </div>
@@ -383,7 +498,7 @@ export default function App() {
                   else if (index === 2) badge = '🥉';
 
                   return (
-                    <div key={index} style={leaderboardRowStyle} className="bb-card-hover">
+                    <div key={entry.id || index} style={leaderboardRowStyle} className="bb-card-hover">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <span style={{ fontSize: '1.2rem', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{badge}</span>
                         <div>
