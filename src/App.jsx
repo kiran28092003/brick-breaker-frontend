@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
 
+const getHistoryStorageKey = (email) =>
+  email ? `bb_history_${email.trim().toLowerCase()}` : null;
+
 export default function App() {
   const [activeView, setActiveView] = useState('home');
 
@@ -26,10 +29,25 @@ export default function App() {
   // Leaderboard Filter Tabs: 'Global' | 'Monthly' | 'Weekly' | 'Everyday'
   const [leaderboardTab, setLeaderboardTab] = useState('Global');
 
-  // Game History State
+  // User Auth State
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('bb_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Personal Game History State (Only loaded when logged in; empty when logged out)
   const [gameHistory, setGameHistory] = useState(() => {
-    const saved = localStorage.getItem('bb_history');
-    return saved ? JSON.parse(saved) : [];
+    const savedUser = localStorage.getItem('bb_user');
+    if (!savedUser) return [];
+    try {
+      const parsedUser = JSON.parse(savedUser);
+      const key = getHistoryStorageKey(parsedUser?.email);
+      if (!key) return [];
+      const savedHistory = localStorage.getItem(key);
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch {
+      return [];
+    }
   });
 
   // Global High Scores for Leaderboard
@@ -38,11 +56,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // User Auth State
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('bb_user');
-    return saved ? JSON.parse(saved) : null;
-  });
   const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -59,11 +72,27 @@ export default function App() {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  // Load the logged-in user's private history whenever `user` changes
+  useEffect(() => {
+    const key = getHistoryStorageKey(user?.email);
+    if (!key) {
+      setGameHistory([]);
+      return;
+    }
+    const saved = localStorage.getItem(key);
+    setGameHistory(saved ? JSON.parse(saved) : []);
+  }, [user]);
+
+  // Persist coins & leaderboard; persist history ONLY to the logged-in user's key
   useEffect(() => {
     localStorage.setItem('bb_coins', coins);
-    localStorage.setItem('bb_history', JSON.stringify(gameHistory));
     localStorage.setItem('bb_global_leaderboard', JSON.stringify(globalScores));
-  }, [coins, gameHistory, globalScores]);
+
+    const key = getHistoryStorageKey(user?.email);
+    if (key) {
+      localStorage.setItem(key, JSON.stringify(gameHistory));
+    }
+  }, [coins, gameHistory, globalScores, user]);
 
   const handleToggleSound = () => {
     const newState = !soundEnabled;
@@ -89,7 +118,7 @@ export default function App() {
     setActiveView('play');
   };
 
-  const saveAndPublishScore = (playerName, playerEmail, score, totalRunCoins, maxWave) => {
+  const saveAndPublishScore = (playerName, playerEmail, score, totalRunCoins, maxWave, shouldSaveHistory = true) => {
     const todayStr = new Date().toLocaleDateString();
     const sessionEntry = {
       id: Date.now(),
@@ -101,10 +130,17 @@ export default function App() {
       date: todayStr
     };
 
-    setGameHistory((prev) => {
-      const updated = [sessionEntry, ...prev];
-      return updated.sort((a, b) => b.score - a.score);
-    });
+    // Only save history when a user is logged in
+    if (shouldSaveHistory && playerEmail) {
+      const userKey = getHistoryStorageKey(playerEmail);
+      setGameHistory((prev) => {
+        const updated = [sessionEntry, ...prev].sort((a, b) => b.score - a.score);
+        if (userKey) {
+          localStorage.setItem(userKey, JSON.stringify(updated));
+        }
+        return updated;
+      });
+    }
 
     setGlobalScores((prev) => {
       const updated = [...prev, { name: playerName, score, coins: totalRunCoins, waves: maxWave, date: todayStr }];
@@ -122,7 +158,7 @@ export default function App() {
     setCoins((c) => c + endRunCoins);
 
     if (user) {
-      saveAndPublishScore(user.name, user.email, score, totalRunCoins, currentWave);
+      saveAndPublishScore(user.name, user.email, score, totalRunCoins, currentWave, true);
       setScoreSubmitted(true);
     }
 
@@ -142,7 +178,7 @@ export default function App() {
     setUser(userData);
     localStorage.setItem('bb_user', JSON.stringify(userData));
 
-    saveAndPublishScore(playerName, playerEmail, finalScore, totalRunCoins, currentWave);
+    saveAndPublishScore(playerName, playerEmail, finalScore, totalRunCoins, currentWave, true);
     setScoreSubmitted(true);
   };
 
@@ -153,8 +189,7 @@ export default function App() {
     setSessionCoins((c) => c + waveCoins);
     setCoins((c) => c + waveCoins);
     setWavesClearedCount((c) => c + 1);
-    
-    // Explicitly calculate next sequential wave target
+
     const upcoming = currentWave + 1;
     setNextWaveTarget(upcoming);
     setCurrentWave(upcoming);
@@ -193,6 +228,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
+    setGameHistory([]);
     localStorage.removeItem('bb_user');
   };
 
@@ -217,7 +253,7 @@ export default function App() {
         .bb-tactile-btn:active { transform: translateY(2px); }
         .bb-card-hover { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
         .bb-card-hover:hover { transform: translateY(-4px); border-color: rgba(56, 189, 248, 0.7) !important; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25); }
-        
+
         @keyframes floatOrb {
           0%, 100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.6)); }
           50% { transform: translateY(-12px) scale(1.03); filter: drop-shadow(0 0 45px rgba(168, 85, 247, 0.8)); }
@@ -269,7 +305,7 @@ export default function App() {
 
       {/* Main Viewport */}
       <main style={mainContentAreaStyle}>
-        
+
         {/* VIEW 1: HOME */}
         {activeView === 'home' && (
           <section style={heroFullContainerStyle}>
@@ -299,7 +335,6 @@ export default function App() {
                 <div style={speechBubbleOverlayStyle}>
                   Clear all bricks to advance to the next wave!
                 </div>
-                {/* Upgraded Dynamic Mascot Orb */}
                 <div className="dynamic-mascot" style={mascotOrbDynamicStyle} onClick={handleStartGame} title="Click to Play!">
                   <div style={mascotEyesContainerStyle}>
                     <div className="mascot-eye" style={mascotEyeEnhancedStyle}/>
@@ -334,7 +369,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            
+
             {displayedScores.length === 0 ? (
               <div style={{ padding: '40px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
                 <p>No scores for {leaderboardTab} yet. Play a game to set a record!</p>
@@ -365,33 +400,53 @@ export default function App() {
           </section>
         )}
 
-        {/* VIEW 3: HISTORY */}
+        {/* VIEW 3: HISTORY (Protected behind Login) */}
         {activeView === 'history' && (
           <section style={cardViewContainerStyle}>
             <div style={sectionEyebrowStyle}>SESSION LOGS</div>
             <h2 style={sectionHeadingStyle}>My Game History</h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
-              Your top completed run sessions saved locally on this browser.
-            </p>
-            {gameHistory.length === 0 ? (
-              <div style={{ padding: '30px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
-                <p>No matches recorded yet. Play an arcade session to log your runs!</p>
+
+            {!user ? (
+              <div style={lockedHistoryBoxStyle} className="bb-card-hover">
+                <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>🔒</div>
+                <h3 style={{ margin: '0 0 8px 0', color: '#ffffff', fontSize: '1.15rem' }}>Login Required</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.88rem', margin: '0 0 18px 0', lineHeight: '1.5' }}>
+                  Please log in to view your personal game history. History is private and hidden when logged out.
+                </p>
+                <button
+                  className="bb-tactile-btn"
+                  onClick={() => setActiveView('login')}
+                  style={{ ...gold3DButtonStyle, width: '100%', padding: '12px 18px', fontSize: '0.95rem' }}
+                >
+                  Go to Login
+                </button>
               </div>
             ) : (
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
-                {gameHistory.map((h, idx) => (
-                  <div key={h.id || idx} style={historyItemStyle} className="bb-card-hover">
-                    <div>
-                      <strong style={{ color: '#38bdf8' }}>{h.playerName || 'Player'} (Max Wave {h.maxWave || 1})</strong>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date || 'Today'}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ color: '#fbbf24', fontWeight: '800', display: 'block' }}>{h.score || 0} pts</span>
-                      <span style={{ fontSize: '0.78rem', color: '#34d399' }}>🪙 +{h.totalCoins || 0} total coins</span>
-                    </div>
+              <>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '16px' }}>
+                  Showing private run history for <strong style={{ color: '#38bdf8' }}>{user.name}</strong>.
+                </p>
+                {gameHistory.length === 0 ? (
+                  <div style={{ padding: '30px 0', color: '#94a3b8', textAlign: 'center', width: '100%' }}>
+                    <p>No matches recorded yet. Play an arcade session to log your runs!</p>
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
+                    {gameHistory.map((h, idx) => (
+                      <div key={h.id || idx} style={historyItemStyle} className="bb-card-hover">
+                        <div>
+                          <strong style={{ color: '#38bdf8' }}>{h.playerName || user.name} (Max Wave {h.maxWave || 1})</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{h.date || 'Today'}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ color: '#fbbf24', fontWeight: '800', display: 'block' }}>{h.score || 0} pts</span>
+                          <span style={{ fontSize: '0.78rem', color: '#34d399' }}>🪙 +{h.totalCoins || 0} total coins</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
@@ -491,7 +546,7 @@ export default function App() {
           <div style={modalCardStyle} className="bb-card-hover">
             <h2>Wave Cleared!</h2>
             <p>Score: {finalScore} • +30 Coins Earned</p>
-            
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button className="bb-tactile-btn" onClick={() => { setLevelCleared(false); setActiveView('home'); }} style={{ ...glassSecondaryButtonStyle, flex: 1, padding: '12px' }}>
                 ← Back to Home
@@ -544,19 +599,19 @@ const heroRightIslandContainerStyle = { display: 'flex', justifyContent: 'center
 const islandGraphicStyle = { position: 'relative', width: '380px', height: '380px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(14,116,144,0.4) 0%, rgba(6,95,70,0.2) 70%, transparent 100%)', border: '2px dashed rgba(56,189,248,0.25)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 0 50px rgba(56,189,248,0.1)' };
 const speechBubbleOverlayStyle = { position: 'absolute', bottom: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', color: '#0f172a', padding: '12px 20px', borderRadius: '16px', fontSize: '0.85rem', fontWeight: '800', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center', maxWidth: '240px', border: '1px solid rgba(56,189,248,0.4)' };
 
-const mascotOrbDynamicStyle = { 
+const mascotOrbDynamicStyle = {
   position: 'relative',
-  width: '120px', 
-  height: '120px', 
-  borderRadius: '50%', 
-  background: 'radial-gradient(circle at 35% 35%, #38bdf8 0%, #0284c7 50%, #0369a1 85%, #0f172a 100%)', 
-  border: '3px solid rgba(255,255,255,0.9)', 
-  boxShadow: 'inset 0 -12px 20px rgba(0,0,0,0.5), inset 0 10px 15px rgba(255,255,255,0.6), 0 0 35px rgba(56,189,248,0.8)', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  alignItems: 'center', 
-  justifyContent: 'center', 
-  gap: '8px' 
+  width: '120px',
+  height: '120px',
+  borderRadius: '50%',
+  background: 'radial-gradient(circle at 35% 35%, #38bdf8 0%, #0284c7 50%, #0369a1 85%, #0f172a 100%)',
+  border: '3px solid rgba(255,255,255,0.9)',
+  boxShadow: 'inset 0 -12px 20px rgba(0,0,0,0.5), inset 0 10px 15px rgba(255,255,255,0.6), 0 0 35px rgba(56,189,248,0.8)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '8px'
 };
 const mascotEyesContainerStyle = { display: 'flex', gap: '16px', marginTop: '4px' };
 const mascotEyeEnhancedStyle = { width: '10px', height: '14px', borderRadius: '50%', background: '#0f172a', boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.6)' };
@@ -573,6 +628,7 @@ const leaderboardTabBtnStyle = { flex: 1, padding: '10px', borderRadius: '12px',
 const leaderboardGridFullStyle = { display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxHeight: '420px', overflowY: 'auto' };
 const leaderboardRowStyle = { background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '16px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' };
 
+const lockedHistoryBoxStyle = { width: '100%', background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '20px', padding: '28px 24px', textAlign: 'center', boxSizing: 'border-box' };
 const historyItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(13,33,51,0.85)', border: '1px solid rgba(56,189,248,0.15)', padding: '14px 18px', borderRadius: '14px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' };
 
 const loginCardStyle = { width: '100%', maxWidth: '420px', background: 'rgba(13, 33, 51, 0.9)', border: '1px solid rgba(56, 189, 248, 0.22)', borderRadius: '24px', padding: '32px 26px', boxSizing: 'border-box' };
